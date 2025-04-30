@@ -5,8 +5,6 @@
     - <Barter>k__BackingField
     - app.FacilityBarter
 
-
-
 Trader 0 - Kilama
 Trader 1 - Musharpeye
 Trader 2 - Gawdygog
@@ -14,7 +12,7 @@ Trader 3 - Aida
 
 
 
-toggle-able progress bars
+toggle-able progress bars - done!
 hide with hud
  - reposition tracker in tent
  - reposition moon in rest menu
@@ -24,33 +22,15 @@ ship/trades ticker
  - reposition ticker in tent
 moon position for non-16:9
 
-manual toggle?
+manual toggle? - done!
+hotkey toggle?
 
 shares flag shows when items are available?
 
 
 
-Fields of retrieval:
-_KeyDialogues
-_IndexData
-_CurrentTime
-_NumTable
-_BonusTable
-_BonusItemData
-Methods of retrieval:
-getCollectionMode
-isAnyFullCollectionItems
-isFullCollectionItems
-isEnableCollectionForHub
-getEnableCollectionNpcNumForHub
-isOpenFacilityDialogue
-awake
-update
-initFacility
-setupTable
-lotItem
-getCollectableItemIndexList
-getCollectableItemList
-getLevel
-getLevel
-getFacilityLevel
+
+ - users will need to delete config when updating
+ - tracker toggle added to reframework ui
+ - toggle-able progress bars added
+

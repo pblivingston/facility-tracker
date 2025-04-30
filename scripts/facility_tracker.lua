@@ -8,9 +8,6 @@ local tidx                 = {
     nest    = 11
 }
 
-local ration_timer        = 0
-local supply_timer_active = false
-
 local is_in_port              = false
 local previous_in_port        = true
 local is_near_departure       = false
@@ -44,29 +41,30 @@ local img              = {}
 local config_path = "facility_tracker.json"
 local config = {
     countdown 	   = 3,
-    shares_cap     = 100,
     draw_ticker    = false,
+	draw_tracker   = true,
     ti_user_scale  = 1.0,
     ti_speed_scale = 1.0,
     ti_opacity     = 1.0,
     tr_user_scale  = 1.0,
     tr_opacity     = 1.0,
     draw_timers    = false,
+	draw_bars      = true,
 	draw_flags     = true,
 	draw_moon      = true,
 	moons          = true,
 	moons_txt      = false,
 	box_datas	   = {
-		ration = { size = 10 },
-		shares = { size = 100 },
-		nest = { count = 0, size = 5 },
-		pugee = {},
+		Rations   = { size = 10, timer = 600 },
+		Shares    = { size = 100 },
+		Nest      = { count = 0, size = 5, timer = 1200 },
+		pugee     = { timer = 2520 },
 		retrieval = {},
-		Rysher = { count = 0, size = 16 },
-		Murtabak = { count = 0, size = 16 },
-		Apar = { count = 0, size = 16 },
+		Rysher    = { count = 0, size = 16 },
+		Murtabak  = { count = 0, size = 16 },
+		Apar      = { count = 0, size = 16 },
 		Plumpeach = { count = 0, size = 16 },
-		Sabar = { count = 0, size = 16 }
+		Sabar     = { count = 0, size = 16 }
 	}
 }
 
@@ -143,8 +141,10 @@ local function get_timer_msg(timer_index)
     return "ERR"
 end
 
-local function get_count_msg(facility)
-    
+local function get_box_msg(box)
+	local count = config.box_datas[box].count
+	local size = config.box_datas[box].size
+	return string.format("%s: %d/%d", box, count, size)
 end
 
 local function is_box_full(facility)
@@ -158,21 +158,16 @@ end
 
 local function get_ration_state()
 	if not dining then return end
-    ration_timer = get_timer(0)
-    config.box_datas.ration.count = dining:getSuppliableFoodNum()
-    config.box_datas.ration.full = dining:isSuppliableFoodMax()
-    supply_timer_active = dining:supplyTimerContinuation()
-    if config.box_datas.ration.count > config.box_datas.ration.size then
-        config.box_datas.ration.size = config.box_datas.ration.count
+    local timer = get_timer(0)
+    config.box_datas.Rations.count = dining:getSuppliableFoodNum()
+    config.box_datas.Rations.full = dining:isSuppliableFoodMax()
+	if timer > config.box_datas.Rations.timer then
+		config.box_datas.Rations.timer = timer
+	end
+    if config.box_datas.Rations.count > config.box_datas.Rations.size then
+        config.box_datas.Rations.size = config.box_datas.Rations.count
     end
     save_config()
-end
-
-local function get_ration_message()
-    -- if config.box_datas.ration.full then
-        -- return "Rations: Full!"
-    -- end
-    return "Rations: " .. config.box_datas.ration.count .. "/" .. config.box_datas.ration.size
 end
 
 -- === Support Ship ===
@@ -228,27 +223,27 @@ local function get_shares_state()
     if not workshop then return end
     local reward_items = workshop:call("getRewardItems")
     if not reward_items then return end
-    config.box_datas.shares.count = reward_items:get_field("_size") or 0
-    config.box_datas.shares.full = workshop:call("isFullRewardItems")
-    config.box_datas.shares.ready = workshop:call("canReceiveRewardItems")
+    config.box_datas.Shares.count = reward_items:get_field("_size") or 0
+    config.box_datas.Shares.full = workshop:call("isFullRewardItems")
+    config.box_datas.Shares.ready = workshop:call("canReceiveRewardItems")
 
-    if config.box_datas.shares.count > config.box_datas.shares.size then
-        config.box_datas.shares.size = config.box_datas.shares.count
+    if config.box_datas.Shares.count > config.box_datas.Shares.size then
+        config.box_datas.Shares.size = config.box_datas.Shares.count
     end
     save_config()
 end
 
 local function get_shares_message()
-    if config.box_datas.shares.count == 0 then
-        return config.box_datas.shares.full and "Shares error!" or "No Festival Shares"
+    if config.box_datas.Shares.count == 0 then
+        return config.box_datas.Shares.full and "Shares error!" or "No Festival Shares"
     end
-	if config.box_datas.shares.full then
+	if config.box_datas.Shares.full then
         return "Shares: Full!"
     end
-	if not config.box_datas.shares.ready then
+	if not config.box_datas.Shares.ready then
         return "Unavailable!"
     end
-    return string.format("Shares: %d/%d ", config.box_datas.shares.count, config.box_datas.shares.size)
+    return string.format("Shares: %d/%d ", config.box_datas.Shares.count, config.box_datas.Shares.size)
 end
 
 -- === Material Retrieval ===
@@ -346,37 +341,21 @@ sdk.hook(
     nil
 )
 
-local function get_npc_message(npc_name)
-    local npc_count = config.box_datas[npc_name].count
-    if not npc_count then
-        print(string.format("Debug: No count available for NPC '%s'!", npc_name))
-        return string.format("%s: ERR", npc_name)
-    end
-
-    local npc_size = config.box_datas[npc_name].size
-    if not npc_size then
-        print(string.format("Debug: No size available for NPC '%s'!", npc_name))
-        return string.format("%s: ERR", npc_name)
-    end
-
-    -- if npc_count == npc_size then
-        -- return string.format("%s: Full!", npc_name)
-    -- end
-    return string.format("%s: %d/%d", npc_name, npc_count, npc_size)
-end
-
 -- === Bird Nest ===
 
 local function get_nest_state()
     local current_nest_time = get_timer(11)
     if current_nest_time then
         if previous_nest_time < 1 and current_nest_time > 1199 then
-            config.box_datas.nest.count = config.box_datas.nest.count + 1
+            config.box_datas.Nest.count = config.box_datas.Nest.count + 1
 		end
-        if config.box_datas.nest.count > config.box_datas.nest.size then
-            config.box_datas.nest.size = config.box_datas.nest.count
+		if current_nest_time > config.box_datas.Nest.timer then
+			config.box_datas.Nest.timer = current_nest_time
+		end
+        if config.box_datas.Nest.count > config.box_datas.Nest.size then
+            config.box_datas.Nest.size = config.box_datas.Nest.count
         end
-		config.box_datas.nest.full = config.box_datas.nest.count == config.box_datas.nest.size
+		config.box_datas.Nest.full = config.box_datas.Nest.count == config.box_datas.Nest.size
         previous_nest_time = current_nest_time
     end
     save_config()
@@ -386,23 +365,19 @@ end
 sdk.hook(
     sdk.find_type_definition("app.Gm262"):get_method("successButtonEvent"),
     function(args)
-        config.box_datas.nest.count = 0
+        config.box_datas.Nest.count = 0
         save_config()
     end,
     nil
 )
 
-local function get_nest_message()
-    -- if config.box_datas.nest.count == config.box_datas.nest.size then
-        -- return "Full!"
-    -- end
-    return "Nest: " .. config.box_datas.nest.count .. "/" .. config.box_datas.nest.size
-end
-
 -- === Poogie ===
 
 local function get_pugee_state()
 	local timer = get_timer(tidx.pugee)
+	if timer > config.box_datas.pugee.timer then
+		config.box_datas.pugee.timer = timer
+	end
 	config.box_datas.pugee.full = timer < 0
 	save_config()
 end
@@ -426,7 +401,7 @@ local function get_moon_folder()
     end
 end
 
--- === Helper functions ===
+-- === Draw helper functions ===
 
 local function apply_opacity(argb, opacity)
     local a     = (argb >> 24) & 0xFF
@@ -444,6 +419,8 @@ local function measureElements(font, elements, gap, scale_elements)
             elem.measured_width = text_font:measure(elem.value)
         elseif elem.type == "icon" then
 			elem.measured_width = scale_elements and (elem.width * table_scale) or elem.width
+		elseif elem.type == "bar" then
+			elem.measured_width = 0 - gap
         elseif elem.type == "timer" then
             elem.width = timer_font:measure(elem.value)
             elem.measured_width = 0 - gap
@@ -472,21 +449,32 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
             d2d.text(text_font, elem.value, xPos, y, apply_opacity(color.text, alpha))
             xPos = xPos + elem.measured_width + gap
         elseif elem.type == "icon" then
-			local drawY = scale_elements and (icon_y + (elem.height - (elem.height + margin) * table_scale) / 2) or icon_y
             local drawW = scale_elements and (elem.width * table_scale) or elem.width
-            local drawH = scale_elements and (elem.height * table_scale) or elem.height
-            d2d.image(elem.value, xPos, drawY, drawW, drawH, alpha)
+            d2d.image(elem.value, xPos, icon_y, drawW, icon_d, alpha)
 			if elem.flag and config.draw_flags then
 				local flagX = xPos - drawW / 2 + margin * 1.5
-				local flagY = drawY - drawH / 2 + margin * 1.2
-				d2d.image(img.flag, flagX, flagY, drawW, drawH, alpha)
+				local flagY = icon_y - icon_d / 2 + margin * 1.2
+				d2d.image(img.flag, flagX, flagY, drawW, icon_d, alpha)
 			end
             xPos = xPos + elem.measured_width + gap
+		elseif elem.type == "bar" and config.draw_bars then
+			local progress = 1 - math.max(0, math.min(1, elem.value / elem.max))
+			local bar_w = icon_d * 0.75
+			local bar_h = icon_d / 25
+			local bar_x = xPos - gap - icon_d + (icon_d - bar_w) / 2
+			local bar_y = y + icon_d - bar_h * 0.75
+			local fill_w = bar_w * progress
+			d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, apply_opacity(color.background, alpha))
+			if elem.flag then
+				d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, apply_opacity(color.full_bar, alpha))
+			else
+				d2d.fill_rect(bar_x, bar_y, fill_w, bar_h, apply_opacity(color.prog_bar, alpha))
+			end
         elseif elem.type == "timer" and config.draw_timers then
             local timer_x = xPos - icon_d - margin * 3
             local timer_char_h = ref_char_h * timer_scale
             local timer_y = y + ref_char_h - timer_char_h - margin / 4
-            local timer_bg_y = timer_y + margin * 4/5
+            local timer_bg_y = timer_y + margin * 0.8
             local timer_bg_w = elem.width
             local timer_bg_h = timer_char_h - margin
             d2d.fill_rect(timer_x, timer_bg_y, timer_bg_w, timer_bg_h, apply_opacity(color.background, alpha))
@@ -500,7 +488,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
             }
             local table_y      = y + (ref_char_h - ref_char_h * table_scale) / 2
 			local table_icon_d = icon_d * table_scale
-            local table_icon_y = icon_y + (icon_d - table_icon_d) / 2
+            local table_icon_y = icon_y + (icon_d - table_icon_d) * 5/8
             local table_gap    = gap * table_scale
             xPos = drawElements(table_font, elem.value, xPos, table_y, table_icon_d, table_icon_y, table_gap, margin, color, alpha, true)
         end
@@ -517,7 +505,7 @@ re.on_frame(
         if not timers or timers:get_field("_size") == 0 then
             first_run = true
             previous_nest_time = 1200
-            config.box_datas.nest.count = 0
+            config.box_datas.Nest.count = 0
 			nest_timer_reset = false
 			nest_state_reset = false
             save_config()
@@ -551,8 +539,8 @@ d2d.register(
         color.timer_text    = 0xFFFCFFA6    -- Light Yellow
 		color.yellow_text   = 0xFFF4DB8A    -- Yellow
         color.red_text      = 0xFFFF0000    -- Red
-        color.progress_bar  = 0xFF00FF00    -- Green
-        color.full_progress = 0xFFFF3300    -- Red-orange
+        color.prog_bar      = 0xFF00FF00    -- Green
+        color.full_bar      = 0xFFE6B00B    -- Orange-yellow
         color.border        = 0xFFAD9D75    -- Tan
     
         img.border_left    = d2d.Image.new("facility_tracker/border_left.png")
@@ -683,15 +671,15 @@ d2d.register(
         }
         local retrieval_elements = {
             { type = "icon",  value = img.sild, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Rysher")      },
-            { type = "text",  value = get_npc_message("Rysher")    },
+            { type = "text",  value = get_box_msg("Rysher")    },
             { type = "icon",  value = img.kunafa, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Murtabak")    },
-            { type = "text",  value = get_npc_message("Murtabak")  },
+            { type = "text",  value = get_box_msg("Murtabak")  },
             { type = "icon",  value = img.suja, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Apar")      },
-            { type = "text",  value = get_npc_message("Apar")      },
+            { type = "text",  value = get_box_msg("Apar")      },
             { type = "icon",  value = img.wudwuds, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Plumpeach")   },
-            { type = "text",  value = get_npc_message("Plumpeach") },
+            { type = "text",  value = get_box_msg("Plumpeach") },
             { type = "icon",  value = img.azuz, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Sabar")      },
-            { type = "text",  value = get_npc_message("Sabar")     }
+            { type = "text",  value = get_box_msg("Sabar")     }
         }
         
         local tracker_elements = {
@@ -699,25 +687,28 @@ d2d.register(
 			{ type = "text",  value = get_ship_message()         },
             { type = "icon",  value = img.ship, width = tr_icon_d, height = tr_icon_d, flag = leaving      },
             { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
-            { type = "icon",  value = img.rations, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("ration")   },
+            { type = "icon",  value = img.rations, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Rations")   },
+			{ type = "bar",   value = get_timer(tidx.ration), max = config.box_datas.Rations.timer, flag = is_box_full("Rations") },
             { type = "timer", value = get_timer_msg(tidx.ration) },
-			{ type = "text",  value = get_ration_message()       },
-            { type = "icon",  value = img.rations, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("ration")   },
+			{ type = "text",  value = get_box_msg("Rations")       },
+            { type = "icon",  value = img.rations, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Rations")   },
             { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
             { type = "icon",  value = img.retrieval, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("retrieval") },
             { type = "table", value = retrieval_elements         },
             { type = "icon",  value = img.retrieval, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("retrieval") },
             { type = "icon",  value = img.spacer_l , width = tr_icon_d, height = tr_icon_d },
-            { type = "icon",  value = img.workshop, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("shares")  },
-            { type = "text",  value = get_shares_message()       },
-            { type = "icon",  value = img.workshop, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("shares")  },
+            { type = "icon",  value = img.workshop, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Shares")  },
+            { type = "text",  value = get_box_msg("Shares")       },
+            { type = "icon",  value = img.workshop, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Shares")  },
             { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
-            { type = "icon",  value = img.nest, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("nest")      },
+            { type = "icon",  value = img.nest, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Nest")      },
+			{ type = "bar",   value = get_timer(tidx.nest), max = config.box_datas.Nest.timer, flag = is_box_full("Nest") },
             { type = "timer", value = get_timer_msg(tidx.nest)   },
-            { type = "text",  value = get_nest_message()         },
-            { type = "icon",  value = img.nest, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("nest")      },
+            { type = "text",  value = get_box_msg("Nest")         },
+            { type = "icon",  value = img.nest, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Nest")      },
             { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
             { type = "icon",  value = img.pugee, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("pugee")     },
+			{ type = "bar",   value = get_timer(tidx.pugee), max = config.box_datas.pugee.timer, flag = is_box_full("pugee") },
             { type = "timer", value = get_timer_msg(tidx.pugee)  }
         }
         
@@ -753,13 +744,15 @@ d2d.register(
         end
 
         -- Draw the tracker
-        d2d.fill_rect(0, tr_bg_y, screen_w, tr_bg_height, tr_bg_color)
-        d2d.image(img.border_left, 0, tr_border_y, tr_end_border_w, tr_border_h, config.tr_opacity)
-        d2d.image(img.border_right, screen_w - tr_end_border_w, tr_border_y, tr_end_border_w, tr_border_h, config.tr_opacity)
-        if tr_sect_border_w > 0 then
-            d2d.image(img.border_section, tr_sect_border_x, tr_border_y, tr_sect_border_w, tr_border_h, config.tr_opacity)
-        end
-        drawElements(tracker_font, tracker_elements, tracker_start_x, tracker_txt_y, tr_icon_d, tr_icon_y, tracker_gap, tr_margin, color, config.tr_opacity)
+		if config.draw_tracker then
+			d2d.fill_rect(0, tr_bg_y, screen_w, tr_bg_height, tr_bg_color)
+			d2d.image(img.border_left, 0, tr_border_y, tr_end_border_w, tr_border_h, config.tr_opacity)
+			d2d.image(img.border_right, screen_w - tr_end_border_w, tr_border_y, tr_end_border_w, tr_border_h, config.tr_opacity)
+			if tr_sect_border_w > 0 then
+				d2d.image(img.border_section, tr_sect_border_x, tr_border_y, tr_sect_border_w, tr_border_h, config.tr_opacity)
+			end
+			drawElements(tracker_font, tracker_elements, tracker_start_x, tracker_txt_y, tr_icon_d, tr_icon_y, tracker_gap, tr_margin, color, config.tr_opacity)
+		end
 		
 		-- Draw the moon
 		if config.draw_moon then
@@ -778,7 +771,9 @@ re.on_draw_ui(function()
         if changed_tr_opacity then config.tr_opacity = newVal2; save_config() end
         
         local checkboxes = {
-            { "Display Timers", "draw_timers" },
+            { "Display Tracker", "draw_tracker" },
+			{ "Display Progress Bars", "draw_bars" },
+			{ "Display Timers", "draw_timers" },
 			{ "Display Flags", "draw_flags" }
         }
         for _, cb in ipairs(checkboxes) do
