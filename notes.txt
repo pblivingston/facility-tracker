@@ -72,6 +72,14 @@ maps
 
 
 
+on app.GUIManager
+	- isExistGUI020001AccessPanel might be button prompts, both fixed and dynamic
+	- 
+
+
+
+
+
 
   - get_HunterStatus (app.cHunterStatus)
   - get_HunterHealth (app.cHunterHealth)

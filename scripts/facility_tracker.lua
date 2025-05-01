@@ -3,12 +3,17 @@ local json = json
 local captured_args        = nil
 local previous_hidden      = false
 local previous_fading      = false
+local previous_menus_open  = false
+local previous_quest_menu  = false
 local fade_value           = 0
 local delay_timer          = 0
 local in_delay             = 0.15
 local in_speed             = 1
 local out_delay            = 0
 local out_speed            = 2.5
+local menu_o_delay         = 0.1
+local menu_i_delay         = 0.5
+local menu_qi_delay        = 10
 local previous_timer_value = {}
 local tidx                 = {
     ration  = 0,
@@ -62,8 +67,6 @@ local config = {
 	draw_flags     = true,
 	draw_moon      = true,
 	draw_m_num     = false,
-	moons          = true,
-	moons_txt      = false,
 	box_datas	   = {
 		Rations   = { size = 10, timer = 600 },
 		Shares    = { size = 100 },
@@ -101,6 +104,7 @@ local facility_manager    = sdk.get_managed_singleton("app.FacilityManager")
 local environment_manager = sdk.get_managed_singleton("app.EnvironmentManager")
 local mission_manager     = sdk.get_managed_singleton("app.MissionManager")
 local fade_manager        = sdk.get_managed_singleton("app.FadeManager")
+local gui_manager         = sdk.get_managed_singleton("app.GUIManager")
 local player_manager      = sdk.get_managed_singleton("app.PlayerManager")
 local timers              = facility_manager:get_field("<_FacilityTimers>k__BackingField")
 local dining              = facility_manager:get_field("<Dining>k__BackingField")
@@ -116,19 +120,31 @@ local function is_active_player()
 	if not timers or timers:get_field("_size") == 0 then
 		return false
 	end
+	local info_success, info = pcall(function() return player_manager:call("getMasterPlayerInfo") end)
+	if not info_success or not info then
+		return false
+	end
+	local character_success, character = pcall(function() return info:get_field("<Character>k__BackingField") end)
+	if not character_success or not character then
+		return false
+	end
 	return true
 end
 
 local function is_visible_hud()
-	if fade_manager:call("get_IsVisibleStateAny") then return false end
+	local current_menus_open = gui_manager:call("get_IsHighHudInput")
+	local current_quest_menu = gui_manager:call("isNpcMenuOpen")
+	local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
+	local in_tent = character:call("get_IsInAllTent")
+	
+	
 	return true
 end
 
 local function get_fade()
 	local current_hidden = fade_manager:call("get_IsVisibleStateAny")
 	local current_fading = fade_manager:call("get_IsFadingAny")
-	local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
-	local in_tent = character:call("get_IsInAllTent")
+	
 	if current_fading and not previous_fading then
 		delay_timer = delay_timer + dt
 		if delay_timer >= out_delay then
@@ -141,6 +157,7 @@ local function get_fade()
 	else
 		previous_fading = current_fading
 	end
+	
 	if previous_hidden and not current_hidden then
 		delay_timer = delay_timer + dt
 		if delay_timer >= in_delay then
@@ -153,13 +170,12 @@ local function get_fade()
 	else
 		previous_hidden = current_hidden
 	end
+	
 	if not current_fading and not previous_hidden then
 		fade_value = 1
 	end
+	
 	if current_hidden then
-		fade_value = 0
-	end
-	if in_tent then
 		fade_value = 0
 	end
 end
@@ -456,16 +472,6 @@ local function get_moon_idx()
 	return moon_idx
 end
 
-local function get_moon_folder()
-    if config.moons_txt == true then
-        return "numerals"
-    else
-        config.moons = true
-		save_config()
-        return "default"
-    end
-end
-
 -- === Draw helper functions ===
 
 local function apply_opacity(argb, opacity)
@@ -579,7 +585,8 @@ re.on_frame(
             return
         end
 		
-		get_fade()
+		if config.hide_w_hud then get_fade() else fade_value = 1 end
+		
         get_ration_state()
         get_ship_state()
         get_shares_state()
@@ -651,7 +658,7 @@ d2d.register(
     end,
     function()
         if not is_active_player() then return end
-		-- if not is_visible_hud() and config.hide_w_hud then return end
+		if not is_visible_hud() and config.hide_w_hud then return end
     
         local screen_w, screen_h = d2d.surface_size()
         local screen_scale       = screen_h / 2160.0
@@ -813,8 +820,8 @@ d2d.register(
 		-- Moon Tracker
 		-------------------------------------------------------------------
 		
-		local moon   = img.moon_ .. get_moon_idx()
-		local m_num  = img.m_num_ .. get_moon_idx()
+		local moon   = img["moon_" .. tostring(get_moon_idx())]
+		local m_num  = img["m_num_" .. tostring(get_moon_idx())]
 		local moon_x = 4 * screen_scale
 		local moon_y = 1922 * screen_scale
 		local moon_w = 140 * screen_scale
@@ -851,8 +858,7 @@ d2d.register(
 		
 		-- Draw the moon
 		if config.draw_moon then
-			d2d.image(m_ring, moon_x, moon_y, moon_w, moon_h, fade_value)
-			-- local moon_image = d2d.Image.new("moon_tracker/" .. get_moon_folder() .. "/phase_" .. get_moon_idx() .. ".png")
+			d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, fade_value)
             d2d.image(moon, moon_x, moon_y, moon_w, moon_h, fade_value)
 			if config.draw_m_num then
 				d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, fade_value)
@@ -884,7 +890,10 @@ re.on_draw_ui(function()
                 save_config()
             end
         end
-
+		
+		imgui.text("Quest menu: " .. tostring(previous_quest_menu))
+		imgui.text("Any menu: " .. tostring(previous_menus_open))
+		
         imgui.tree_pop()
     end
 	
@@ -898,22 +907,6 @@ re.on_draw_ui(function()
             local changedBox, newVal = imgui.checkbox(label, config[key])
             if changedBox then
                 config[key] = newVal
-                save_config()
-            end
-        end
-		
-		local img_checkboxes = {
-			{ "Native Style",       "moons"     },
-            { "With Numerals",      "moons_txt" }
-        }
-        for _, cb in ipairs(img_checkboxes) do
-            local label, key = cb[1], cb[2]
-            local changedBox, newValue = imgui.checkbox(label, config[key])
-            if changedBox and newValue then
-                for _, inner_cb in ipairs(img_checkboxes) do
-                    config[inner_cb[2]] = false
-                end
-                config[key] = true
                 save_config()
             end
         end

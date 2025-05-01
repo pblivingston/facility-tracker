@@ -31,6 +31,88 @@ local large_workshop = facility_manager and facility_manager:get_field("<LargeWo
 local environment_manager = sdk.get_managed_singleton("app.EnvironmentManager")
 local fade_manager        = sdk.get_managed_singleton("app.FadeManager")
 local player_manager = sdk.get_managed_singleton("app.PlayerManager")
+local gui_manager = sdk.get_managed_singleton("app.GUIManager")
+
+local character_methods = {
+    { label = "Draw off", method = "get_IsDrawOff" },
+    { label = "Combat", method = "get_IsCombat" },
+    { label = "Half Combat", method = "get_IsHalfCombat" },
+    { label = "Combat Cage", method = "get_IsCombatCageLight" },
+    { label = "Life Area", method = "get_IsInLifeArea" },
+    { label = "Base Camp", method = "get_IsInBaseCamp" },
+    { label = "Camp Layout", method = "get_IsCampLayoutMode" },
+    { label = "In any", method = "get_IsInAllTent" },
+    { label = "In tent", method = "get_IsInTent" },
+    { label = "In temp", method = "get_IsInTempTent" },
+    { label = "Climbing", method = "get_IsClimbWall" },
+    { label = "In dam", method = "get_IsInDam" },
+    { label = "In stream", method = "get_IsInMuddyStream" },
+    { label = "In wave", method = "get_IsInEnemyWave" },
+    { label = "In hot area", method = "get_IsInHotArea" },
+    { label = "In cold area", method = "get_IsInColdArea" },
+    { label = "In select area", method = "IsInSelectArea" },
+    { label = "Gimmick Cancel", method = "get_IsGimmickPullCancel" },
+    { label = "Strong slinger", method = "get_IsCanShootStrongSringer" },
+    { label = "Riding", method = "get_IsPorterRiding" },
+    { label = "Riding saddle", method = "get_IsPorterRidingConstSaddle" },
+    { label = "Can call ride", method = "isEnablePorterCall" },
+}
+
+local element_fields = {
+	{ label = "Vertical Type", field = "<VerticalType>k__BackingField" },
+	{ label = "All Slider", field = "<IsAllSliderMode>k__BackingField" },
+	{ label = "Slinger Ammo", field = "<LoadedSlingerAmmo>k__BackingField" },
+	{ label = "Pouch Changed", field = "<_IsPouchChanged>k__BackingField" },
+	{ label = "Initialized", field = "<_Initialized>k__BackingField" },
+	{ label = "Init cursor", field = "<_RequestInitCursor>k__BackingField" },
+	{ label = "Selected Item", field = "<SelectedItemId>k__BackingField" },
+	{ label = "Custom Shortcut", field = "<IsCustomShortcutActive>k__BackingField" },
+	{ label = "Input", field = "<IsInput>k__BackingField" },
+	{ label = "Last Input Device", field = "<_LastInputDevice>k__BackingField" },
+	{ label = "Slinger Set", field = "<IsSlingerSet>k__BackingField" },
+	{ label = "Button option", field = "<_DKEY_AND_BUTTON_OP>k__BackingField" },
+	{ label = "Item Slider", field = "<IsItemSliderMode>k__BackingField" },
+	{ label = "Slinger Aim", field = "<_IsSlingerAimMode>k__BackingField" },
+	{ label = "Toggle", field = "<_IsToggle>k__BackingField" },
+	{ label = "Direct", field = "<_IsDirect>k__BackingField" },
+	{ label = "Kinoko Level", field = "<_KinokoLevel>k__BackingField" },
+	{ label = "Open Button", field = "_OpenButton" },
+	{ label = "Open Button Reset", field = "_ForceOpenButtonReset" },
+	{ label = "Open Time", field = "OPEN_TIME" },
+	{ label = "Open Timer", field = "<_OpenTimer>k__BackingField" },
+	{ label = "Don't Select", field = "<DontSelect>k__BackingField" },
+	{ label = "Input Item All Old", field = "<_InputItemAllOld>k__BackingField" }
+}
+
+local fading_methods = {
+	{ label = "fading any", method = "get_IsFadingAny" },
+	{ label = "fading complete all", method = "get_IsFadingCompleteAll" },
+	{ label = "invisible any", method = "get_IsVisibleStateAny" },
+	{ label = "fading app", method = "get_IsFadingApp" },
+	{ label = "fading app 2nd", method = "get_IsFadingApp2nd" },
+	{ label = "fading scene", method = "get_IsFadingScene" },
+	{ label = "fading story", method = "get_IsFadingStory" },
+	{ label = "fading story white", method = "get_IsFadingStoryWhite" },
+	{ label = "fading event", method = "get_IsFadingEvent" },
+	{ label = "fading event raw UI", method = "get_IsFadingEventRawUI" },
+	{ label = "fade out app", method = "get_IsFadeOutApp" },
+	{ label = "fade out app 2nd", method = "get_IsFadeOutApp2nd" },
+	{ label = "fade out scene", method = "get_IsFadeOutScene" },
+	{ label = "fade out story", method = "get_IsFadeOutStory" },
+	{ label = "fade out story white", method = "get_IsFadeOutStoryWhite" },
+	{ label = "fade in app", method = "get_IsFadeInApp" },
+	{ label = "fade in app 2nd", method = "get_IsFadeInApp2nd" },
+	{ label = "fade in scene", method = "get_IsFadeInScene" },
+	{ label = "fade in story", method = "get_IsFadeInStory" },
+	{ label = "fade in story white", method = "get_IsFadeInStoryWhite" },
+	{ label = "invisible app", method = "get_IsVisibleStateApp" },
+	{ label = "invisible app 2nd", method = "get_IsVisibleStateApp2nd" },
+	{ label = "invisible scene", method = "get_IsVisibleStateScene" },
+	{ label = "invisible story", method = "get_IsVisibleStateStory" },
+	{ label = "invisible story white", method = "get_IsVisibleStateStoryWhite" },
+	{ label = "invisible event", method = "get_IsVisibleStateEvent" },
+	{ label = "invisible event raw UI", method = "get_IsVisibleStateEventRawUI" },
+}
 
 local function get_timer(timer_index)
     if not timers then return nil end
@@ -69,69 +151,104 @@ sdk.hook(
     nil
 )
 
+local function get_Item_GUI()
+	if gui_manager then
+		local gui_accessor = gui_manager and gui_manager:get_field("<GUI020006Accessor>k__BackingField")
+		local guis_field = gui_accessor and gui_accessor:get_field("GUIs")
+		local enumerator = guis_field and guis_field:call("GetEnumerator")
+		local mArray = enumerator and enumerator:get_field("mArray")
+		local element = mArray and mArray:get_element(0)
+	end
+	return element
+end
+
 re.on_draw_ui(function()
-    if imgui.tree_node("Player") then
-		if player_manager then
-			local info = player_manager:call("getMasterPlayerInfo")
-			local character = info:get_field("<Character>k__BackingField")
-			local draw_off = character:call("get_IsDrawOff")
-			local combat = character:call("get_IsCombat")
-			local half_combat = character:call("get_IsHalfCombat")
-			local combat_cage = character:call("get_IsCombatCageLight")
-			local life_area = character:call("get_IsInLifeArea")
-			local base_camp = character:call("get_IsInBaseCamp")
-			local camp_layout = character:call("get_IsCampLayoutMode")
-			local in_all  = character:call("get_IsInAllTent")
-			local in_tent = character:call("get_IsInTent")
-			local in_temp = character:call("get_IsInTempTent")
-			local climb_wall = character:call("get_IsClimbWall")
-			local dam = character:call("get_IsInDam")
-			local muddy_stream = character:call("get_IsInMuddyStream")
-			local enemy_wave = character:call("get_IsInEnemyWave")
-			local hot_area = character:call("get_IsInHotArea")
-			local cold_area = character:call("get_IsInColdArea")
-			local select_area = character:call("IsInSelectArea")
-			local gimmick_cancel = character:call("get_IsGimmickPullCancel")
-			local strong_sling = character:call("get_IsCanShootStrongSringer")
-			local riding = character:call("get_IsPorterRiding")
-			local riding_saddle = character:call("get_IsPorterRidingConstSaddle")
-			local call_ride = character:call("isEnablePorterCall")
-			
-			imgui.text("Draw off: " .. tostring(draw_off))
-			imgui.text("Combat: " .. tostring(combat))
-			imgui.text("Half Combat: " .. tostring(half_combat))
-			imgui.text("Combat Cage: " .. tostring(combat_cage))
-			imgui.text("Life Area: " .. tostring(life_area))
-			imgui.text("Base Camp: " .. tostring(base_camp))
-			imgui.text("Camp Layout: " .. tostring(camp_layout))
-			imgui.text("In any: " .. tostring(in_all))
-			imgui.text("In tent: " .. tostring(in_tent))
-			imgui.text("In temp: " .. tostring(in_temp))
-			imgui.text("Climbing: " .. tostring(climb_wall))
-			imgui.text("In dam: " .. tostring(dam))
-			imgui.text("In stream: " .. tostring(muddy_stream))
-			imgui.text("In wave: " .. tostring(enemy_wave))
-			imgui.text("In hot area: " .. tostring(hot_area))
-			imgui.text("In cold area: " .. tostring(cold_area))
-			imgui.text("In select area: " .. tostring(select_area))
-			imgui.text("Gimmick Cancel: " .. tostring(gimmick_cancel))
-			imgui.text("Strong slinger: " .. tostring(strong_sling))
-			imgui.text("Riding: " .. tostring(riding))
-			imgui.text("Riding saddle: " .. tostring(riding_saddle))
-			imgui.text("Can call ride: " .. tostring(call_ride))
+	if imgui.tree_node("GUI Methods") then
+		if gui_manager then
+			local success, result = pcall(function() return gui_manager:call("isNpcMenuOpen") end)
+			imgui.text("Result: " .. tostring(result))
 		else
-			imgui.text("Player Manager not found.")
+			imgui.text("GUI not found.")
 		end
 		imgui.tree_pop()
 	end
 	
+	if imgui.tree_node("Item GUI Methods") then
+		local gui_accessor = gui_manager and gui_manager:get_field("<GUI020006Accessor>k__BackingField")
+		local guis_field = gui_accessor and gui_accessor:get_field("GUIs")
+		local enumerator = guis_field and guis_field:call("GetEnumerator")
+		local mArray = enumerator and enumerator:get_field("mArray")
+		local element = mArray and mArray:get_element(0)
+		if element then
+			local hud_visible = element:call("isHudVisible")
+			local visible = element:call("isVisible")
+			local awake_0 = element:call("<guiHudAwake>b__139_0")
+			local awake_1 = element:call("<guiHudAwake>b__139_1")
+			
+			imgui.text("HUD Visible: " .. tostring(hud_visible))
+			imgui.text("Visible: " .. tostring(visible))
+			imgui.text("Awake 0: " .. tostring(awake_0))
+			imgui.text("Awake 1: " .. tostring(awake_1))
+		else
+			imgui.text("Element not found.")
+		end
+		imgui.tree_pop()
+	end
+	
+	if imgui.tree_node("Item GUI Fields") then
+		local gui_accessor = gui_manager and gui_manager:get_field("<GUI020006Accessor>k__BackingField")
+		local guis_field = gui_accessor and gui_accessor:get_field("GUIs")
+		local enumerator = guis_field and guis_field:call("GetEnumerator")
+		local mArray = enumerator and enumerator:get_field("mArray")
+		local element = mArray and mArray:get_element(0)
+		if element then
+            for _, entry in ipairs(element_fields) do
+                local success, result = pcall(function() return element:get_field(entry.field) end)
+                if success then
+                    imgui.text(string.format("%s: %s", entry.label, tostring(result)))
+                else
+                    imgui.text(string.format("%s: Error getting %s", entry.label, entry.field))
+                end
+            end
+        else
+            imgui.text("Element not found.")
+        end
+		imgui.tree_pop()
+	end
+	
+    if imgui.tree_node("Player") then
+        if player_manager then
+            local info = player_manager:call("getMasterPlayerInfo")
+            local character = info and info:get_field("<Character>k__BackingField")
+
+            if character then
+                for _, entry in ipairs(character_methods) do
+                    local success, result = pcall(function() return character:call(entry.method) end)
+                    if success then
+                        imgui.text(string.format("%s: %s", entry.label, tostring(result)))
+                    else
+                        imgui.text(string.format("%s: Error calling %s", entry.label, entry.method))
+                    end
+                end
+            else
+                imgui.text("Character not found.")
+            end
+        else
+            imgui.text("Player Manager not found.")
+        end
+        imgui.tree_pop()
+    end
+	
 	if imgui.tree_node("Fading") then
 		if fade_manager then
-			local hidden = fade_manager:call("get_IsVisibleStateAny")
-			local fading = fade_manager:call("get_IsFadingAny")
-			
-			imgui.text("Hidden: " .. tostring(hidden))
-			imgui.text("Fading: " .. tostring(fading))
+			for _, entry in ipairs(fading_methods) do
+				local success, result = pcall(function() return fade_manager:call(entry.method) end)
+				if success then
+					imgui.text(string.format("%s: %s", entry.label, tostring(result)))
+				else
+					imgui.text(string.format("%s: Error calling %s", entry.label, entry.method))
+				end
+			end
 		else
 			imgui.text("Fade Manager not found.")
 		end
