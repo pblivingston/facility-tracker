@@ -61,6 +61,7 @@ local config = {
 	draw_bars      = true,
 	draw_flags     = true,
 	draw_moon      = true,
+	draw_m_num     = false,
 	moons          = true,
 	moons_txt      = false,
 	box_datas	   = {
@@ -632,6 +633,21 @@ d2d.register(
         img.azuz 	 	   = d2d.Image.new("facility_tracker/azuz.png")
         img.suja 	 	   = d2d.Image.new("facility_tracker/suja.png")
         img.sild 	 	   = d2d.Image.new("facility_tracker/sild.png")
+		img.m_ring         = d2d.Image.new("moon_tracker/ring.png")
+		img.moon_0         = d2d.Image.new("moon_tracker/moon_0.png")
+		img.moon_1         = d2d.Image.new("moon_tracker/moon_1.png")
+		img.moon_2         = d2d.Image.new("moon_tracker/moon_2.png")
+		img.moon_3         = d2d.Image.new("moon_tracker/moon_3.png")
+		img.moon_4         = d2d.Image.new("moon_tracker/moon_4.png")
+		img.moon_5         = d2d.Image.new("moon_tracker/moon_5.png")
+		img.moon_6         = d2d.Image.new("moon_tracker/moon_6.png")
+		img.m_num_0        = d2d.Image.new("moon_tracker/num_0.png")
+		img.m_num_1        = d2d.Image.new("moon_tracker/num_1.png")
+		img.m_num_2        = d2d.Image.new("moon_tracker/num_2.png")
+		img.m_num_3        = d2d.Image.new("moon_tracker/num_3.png")
+		img.m_num_4        = d2d.Image.new("moon_tracker/num_4.png")
+		img.m_num_5        = d2d.Image.new("moon_tracker/num_5.png")
+		img.m_num_6        = d2d.Image.new("moon_tracker/num_6.png")
     end,
     function()
         if not is_active_player() then return end
@@ -792,6 +808,17 @@ d2d.register(
         local tr_border_y      = tr_bg_y - (tr_border_h / 2)
         local tr_sect_border_x = tr_end_border_w - (tr_margin / 2)
         local tr_sect_border_w = screen_w - tr_end_border_w - tr_sect_border_x + tr_margin
+		
+		-------------------------------------------------------------------
+		-- Moon Tracker
+		-------------------------------------------------------------------
+		
+		local moon   = img.moon_ .. get_moon_idx()
+		local m_num  = img.m_num_ .. get_moon_idx()
+		local moon_x = 4 * screen_scale
+		local moon_y = 1922 * screen_scale
+		local moon_w = 140 * screen_scale
+		local moon_h = 140 * screen_scale
 
         -------------------------------------------------------------------
         -- DRAWS
@@ -824,8 +851,12 @@ d2d.register(
 		
 		-- Draw the moon
 		if config.draw_moon then
-			local moon_image = d2d.Image.new("moon_tracker/" .. get_moon_folder() .. "/phase_" .. get_moon_idx() .. ".png")
-            d2d.image(moon_image, 4 * screen_scale, 1922 * screen_scale, 140 * screen_scale, 140 * screen_scale, fade_value)
+			d2d.image(m_ring, moon_x, moon_y, moon_w, moon_h, fade_value)
+			-- local moon_image = d2d.Image.new("moon_tracker/" .. get_moon_folder() .. "/phase_" .. get_moon_idx() .. ".png")
+            d2d.image(moon, moon_x, moon_y, moon_w, moon_h, fade_value)
+			if config.draw_m_num then
+				d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, fade_value)
+			end
 		end
     end
 )
@@ -859,7 +890,8 @@ re.on_draw_ui(function()
 	
 	if imgui.tree_node("Moon Phase Tracker") then
         local checkboxes = {
-            { "Display Moon Phase", "draw_moon" }
+            { "Display Moon Phase", "draw_moon" },
+			{ "Display Numerals", "draw_m_num" }
         }
         for _, cb in ipairs(checkboxes) do
             local label, key = cb[1], cb[2]
