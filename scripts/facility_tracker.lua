@@ -1,6 +1,14 @@
 local json = json
 
 local captured_args        = nil
+local previous_hidden      = false
+local previous_fading      = false
+local fade_value           = 0
+local delay_timer          = 0
+local in_delay             = 0.15
+local in_speed             = 1
+local out_delay            = 0
+local out_speed            = 2.5
 local previous_timer_value = {}
 local tidx                 = {
     ration  = 0,
@@ -41,6 +49,7 @@ local img              = {}
 local config_path = "facility_tracker.json"
 local config = {
     countdown 	   = 3,
+	hide_w_hud     = true,
     draw_ticker    = false,
 	draw_tracker   = true,
     ti_user_scale  = 1.0,
@@ -89,6 +98,9 @@ end
 
 local facility_manager    = sdk.get_managed_singleton("app.FacilityManager")
 local environment_manager = sdk.get_managed_singleton("app.EnvironmentManager")
+local mission_manager     = sdk.get_managed_singleton("app.MissionManager")
+local fade_manager        = sdk.get_managed_singleton("app.FadeManager")
+local player_manager      = sdk.get_managed_singleton("app.PlayerManager")
 local timers              = facility_manager:get_field("<_FacilityTimers>k__BackingField")
 local dining              = facility_manager:get_field("<Dining>k__BackingField")
 local ship                = facility_manager:get_field("<Ship>k__BackingField")
@@ -97,6 +109,58 @@ local retrieval           = facility_manager:get_field("<Collection>k__BackingFi
 
 local function capture_args(args)
     captured_args = args
+end
+
+local function is_active_player()
+	if not timers or timers:get_field("_size") == 0 then
+		return false
+	end
+	return true
+end
+
+local function is_visible_hud()
+	if fade_manager:call("get_IsVisibleStateAny") then return false end
+	return true
+end
+
+local function get_fade()
+	local current_hidden = fade_manager:call("get_IsVisibleStateAny")
+	local current_fading = fade_manager:call("get_IsFadingAny")
+	local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
+	local in_tent = character:call("get_IsInAllTent")
+	if current_fading and not previous_fading then
+		delay_timer = delay_timer + dt
+		if delay_timer >= out_delay then
+			fade_value = math.max(fade_value - out_speed * dt, 0)
+			if fade_value == 0 then
+				previous_fading = current_fading
+				delay_timer = 0
+			end
+		end
+	else
+		previous_fading = current_fading
+	end
+	if previous_hidden and not current_hidden then
+		delay_timer = delay_timer + dt
+		if delay_timer >= in_delay then
+			fade_value = math.min(fade_value + in_speed * dt, 1)
+			if fade_value == 1 then
+				previous_hidden = current_hidden
+				delay_timer = 0
+			end
+		end
+	else
+		previous_hidden = current_hidden
+	end
+	if not current_fading and not previous_hidden then
+		fade_value = 1
+	end
+	if current_hidden then
+		fade_value = 0
+	end
+	if in_tent then
+		fade_value = 0
+	end
 end
 
 -- Update timer
@@ -502,8 +566,10 @@ end
 
 re.on_frame(
     function()
-        if not timers or timers:get_field("_size") == 0 then
+        if not is_active_player() then
             first_run = true
+			previous_hidden = true
+			previous_fading = true
             previous_nest_time = 1200
             config.box_datas.Nest.count = 0
 			nest_timer_reset = false
@@ -512,6 +578,7 @@ re.on_frame(
             return
         end
 		
+		get_fade()
         get_ration_state()
         get_ship_state()
         get_shares_state()
@@ -567,9 +634,8 @@ d2d.register(
         img.sild 	 	   = d2d.Image.new("facility_tracker/sild.png")
     end,
     function()
-        if not timers or timers:get_field("_size") == 0 then
-            return
-        end
+        if not is_active_player() then return end
+		-- if not is_visible_hud() and config.hide_w_hud then return end
     
         local screen_w, screen_h = d2d.surface_size()
         local screen_scale       = screen_h / 2160.0
@@ -581,14 +647,15 @@ d2d.register(
         -- Ship/Trades Ticker
         -------------------------------------------------------------------
 
-        local ti_user_scale  = config.ti_user_scale
+        local ti_opacity     = config.ti_opacity * fade_value
+		local ti_user_scale  = config.ti_user_scale
         local ti_eff_scale   = screen_scale * ti_user_scale
         local ti_margin      = base_margin * ti_eff_scale
         local ti_bg_height   = 28 * ti_eff_scale
         local ti_icon_d      = ti_bg_height * 1.1
         local ti_speed_scale = config.ti_speed_scale * ti_eff_scale
         local ticker_speed   = 90 * ti_speed_scale
-		local ti_bg_color    = apply_opacity(color.background, config.ti_opacity)
+		local ti_bg_color    = apply_opacity(color.background, ti_opacity)
 		local ticker_gap     = 10 * ti_eff_scale
 		local ti_ex_gap      = ticker_gap
         local ti_bg_y        = 0
@@ -602,33 +669,33 @@ d2d.register(
         }
         
         local ship_elements = {
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
 			{ type = "text",  value = "This is a scrolling ticker message." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "This will eventually display support ship items available once I find them." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "This is placeholder text for ship items." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d }
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d }
         }
 
         local trades_elements = {
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "The text just keeps on scrolling!" },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "Ideally, this will also list available trades, but those have been rather elusive." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "Just placeholder text for now." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d }
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d }
         }
         
         local ticker_elements = {
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "Here's a ticker." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
 			{ type = "table", value = ship_elements   },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "table", value = trades_elements },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "And we loop around again." }
         }
         
@@ -653,12 +720,13 @@ d2d.register(
         -- Factilities Tracker
         -------------------------------------------------------------------
 
-        local tr_user_scale = config.tr_user_scale
+        local tr_opacity    = config.tr_opacity * fade_value
+		local tr_user_scale = config.tr_user_scale
         local tr_eff_scale  = screen_scale * tr_user_scale
         local tr_margin     = base_margin * tr_eff_scale
         local tr_bg_height  = 50 * tr_eff_scale
         local tr_bg_y       = screen_h - tr_bg_height
-        local tr_bg_color   = apply_opacity(color.background, config.tr_opacity)
+        local tr_bg_color   = apply_opacity(color.background, tr_opacity)
         local tr_icon_d     = tr_bg_height * 1.1
 		local tracker_gap   = 18 * tr_eff_scale
 		local tr_icon_y     = tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2
@@ -670,44 +738,44 @@ d2d.register(
             italic = false
         }
         local retrieval_elements = {
-            { type = "icon",  value = img.sild, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Rysher")      },
+            { type = "icon",  value = img.sild, width = tr_icon_d, flag = is_box_full("Rysher")      },
             { type = "text",  value = get_box_msg("Rysher")    },
-            { type = "icon",  value = img.kunafa, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Murtabak")    },
+            { type = "icon",  value = img.kunafa, width = tr_icon_d, flag = is_box_full("Murtabak")    },
             { type = "text",  value = get_box_msg("Murtabak")  },
-            { type = "icon",  value = img.suja, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Apar")      },
+            { type = "icon",  value = img.suja, width = tr_icon_d, flag = is_box_full("Apar")      },
             { type = "text",  value = get_box_msg("Apar")      },
-            { type = "icon",  value = img.wudwuds, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Plumpeach")   },
+            { type = "icon",  value = img.wudwuds, width = tr_icon_d, flag = is_box_full("Plumpeach")   },
             { type = "text",  value = get_box_msg("Plumpeach") },
-            { type = "icon",  value = img.azuz, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Sabar")      },
+            { type = "icon",  value = img.azuz, width = tr_icon_d, flag = is_box_full("Sabar")      },
             { type = "text",  value = get_box_msg("Sabar")     }
         }
         
         local tracker_elements = {
-            { type = "icon",  value = img.ship, width = tr_icon_d, height = tr_icon_d, flag = leaving      },
+            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving      },
 			{ type = "text",  value = get_ship_message()         },
-            { type = "icon",  value = img.ship, width = tr_icon_d, height = tr_icon_d, flag = leaving      },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
-            { type = "icon",  value = img.rations, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Rations")   },
+            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving      },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
+            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations")   },
 			{ type = "bar",   value = get_timer(tidx.ration), max = config.box_datas.Rations.timer, flag = is_box_full("Rations") },
             { type = "timer", value = get_timer_msg(tidx.ration) },
 			{ type = "text",  value = get_box_msg("Rations")       },
-            { type = "icon",  value = img.rations, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Rations")   },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
-            { type = "icon",  value = img.retrieval, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("retrieval") },
+            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations")   },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
+            { type = "icon",  value = img.retrieval, width = tr_icon_d, flag = is_box_full("retrieval") },
             { type = "table", value = retrieval_elements         },
-            { type = "icon",  value = img.retrieval, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("retrieval") },
-            { type = "icon",  value = img.spacer_l , width = tr_icon_d, height = tr_icon_d },
-            { type = "icon",  value = img.workshop, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Shares")  },
+            { type = "icon",  value = img.retrieval, width = tr_icon_d, flag = is_box_full("retrieval") },
+            { type = "icon",  value = img.spacer_l , width = tr_icon_d },
+            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares")  },
             { type = "text",  value = get_box_msg("Shares")       },
-            { type = "icon",  value = img.workshop, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Shares")  },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
-            { type = "icon",  value = img.nest, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Nest")      },
+            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares")  },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
+            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest")      },
 			{ type = "bar",   value = get_timer(tidx.nest), max = config.box_datas.Nest.timer, flag = is_box_full("Nest") },
             { type = "timer", value = get_timer_msg(tidx.nest)   },
             { type = "text",  value = get_box_msg("Nest")         },
-            { type = "icon",  value = img.nest, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Nest")      },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
-            { type = "icon",  value = img.pugee, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("pugee")     },
+            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest")      },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
+            { type = "icon",  value = img.pugee, width = tr_icon_d, flag = is_box_full("pugee")     },
 			{ type = "bar",   value = get_timer(tidx.pugee), max = config.box_datas.pugee.timer, flag = is_box_full("pugee") },
             { type = "timer", value = get_timer_msg(tidx.pugee)  }
         }
@@ -732,13 +800,13 @@ d2d.register(
         -- Draw the ticker
         if config.draw_ticker then
             d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
-            d2d.image(img.border_left, 0, ti_border_y, ti_end_border_w, ti_border_h, config.ti_opacity)
-            d2d.image(img.border_right, screen_w - ti_end_border_w, ti_border_y, ti_end_border_w, ti_border_h, config.ti_opacity)
+            d2d.image(img.border_left, 0, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
+            d2d.image(img.border_right, screen_w - ti_end_border_w, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
             if ti_sect_border_w > 0 then
-                d2d.image(img.border_section, ti_sect_border_x, ti_border_y, ti_sect_border_w, ti_border_h, config.ti_opacity)
+                d2d.image(img.border_section, ti_sect_border_x, ti_border_y, ti_sect_border_w, ti_border_h, ti_opacity)
             end
             while current_x < screen_w do
-                drawElements(ticker_font, ticker_elements, current_x, ticker_txt_y, ti_icon_d, ti_icon_y, ticker_gap, ti_margin, color, config.ti_opacity)
+                drawElements(ticker_font, ticker_elements, current_x, ticker_txt_y, ti_icon_d, ti_icon_y, ticker_gap, ti_margin, color, ti_opacity)
                 current_x = current_x + totalTickerWidth
             end
         end
@@ -746,18 +814,18 @@ d2d.register(
         -- Draw the tracker
 		if config.draw_tracker then
 			d2d.fill_rect(0, tr_bg_y, screen_w, tr_bg_height, tr_bg_color)
-			d2d.image(img.border_left, 0, tr_border_y, tr_end_border_w, tr_border_h, config.tr_opacity)
-			d2d.image(img.border_right, screen_w - tr_end_border_w, tr_border_y, tr_end_border_w, tr_border_h, config.tr_opacity)
+			d2d.image(img.border_left, 0, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
+			d2d.image(img.border_right, screen_w - tr_end_border_w, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
 			if tr_sect_border_w > 0 then
-				d2d.image(img.border_section, tr_sect_border_x, tr_border_y, tr_sect_border_w, tr_border_h, config.tr_opacity)
+				d2d.image(img.border_section, tr_sect_border_x, tr_border_y, tr_sect_border_w, tr_border_h, tr_opacity)
 			end
-			drawElements(tracker_font, tracker_elements, tracker_start_x, tracker_txt_y, tr_icon_d, tr_icon_y, tracker_gap, tr_margin, color, config.tr_opacity)
+			drawElements(tracker_font, tracker_elements, tracker_start_x, tracker_txt_y, tr_icon_d, tr_icon_y, tracker_gap, tr_margin, color, tr_opacity)
 		end
 		
 		-- Draw the moon
 		if config.draw_moon then
 			local moon_image = d2d.Image.new("moon_tracker/" .. get_moon_folder() .. "/phase_" .. get_moon_idx() .. ".png")
-            d2d.image(moon_image, 4 * screen_scale, 1922 * screen_scale, 140 * screen_scale, 140 * screen_scale, 1.0)
+            d2d.image(moon_image, 4 * screen_scale, 1922 * screen_scale, 140 * screen_scale, 140 * screen_scale, fade_value)
 		end
     end
 )
@@ -772,9 +840,10 @@ re.on_draw_ui(function()
         
         local checkboxes = {
             { "Display Tracker", "draw_tracker" },
-			{ "Display Progress Bars", "draw_bars" },
-			{ "Display Timers", "draw_timers" },
-			{ "Display Flags", "draw_flags" }
+			{ "Hide with HUD", "hide_w_hud" },
+			{ "Progress Bars", "draw_bars" },
+			{ "Timers", "draw_timers" },
+			{ "Flags", "draw_flags" }
         }
         for _, cb in ipairs(checkboxes) do
             local label, key = cb[1], cb[2]
