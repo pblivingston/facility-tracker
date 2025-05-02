@@ -12,7 +12,7 @@ local in_speed             = 1
 local out_delay            = 0
 local out_speed            = 2.5
 local menu_o_delay         = 0.06
-local menu_i_delay         = 0.3
+local menu_i_delay         = 0.7
 local previous_timer_value = {}
 local tidx                 = {
     ration  = 0,
@@ -47,27 +47,28 @@ local table_scale      = 0.9
 local timer_scale      = 0.42
 local flag_scale       = 0.4
 local ti_scroll_offset = 0
+local tent_ui_scale    = 0.9
 local color            = {}
 local img              = {}
 
 local config_path = "facility_tracker.json"
 local config = {
-    countdown 	    = 3,
-	hide_w_hud      = true,
-    draw_ticker     = false,
-	draw_tracker    = true,
-    ti_user_scale   = 1.0,
-    ti_speed_scale  = 1.0,
-    ti_opacity      = 1.0,
-    tr_user_scale   = 1.0,
-    tr_opacity      = 1.0,
-	tracker_in_tent = false,
-    draw_timers     = false,
-	draw_bars       = true,
-	draw_flags      = true,
-	draw_moon       = true,
-	draw_m_num      = false,
-	box_datas	    = {
+    countdown 	   = 3,
+	hide_w_hud     = true,
+    draw_ticker    = false,
+	draw_tracker   = true,
+    ti_user_scale  = 1.0,
+    ti_speed_scale = 1.0,
+    ti_opacity     = 1.0,
+    tr_user_scale  = 1.0,
+    tr_opacity     = 1.0,
+	draw_in_tent   = false,
+    draw_timers    = false,
+	draw_bars      = true,
+	draw_flags     = true,
+	draw_moon      = true,
+	draw_m_num     = false,
+	box_datas	   = {
 		Rations   = { size = 10, timer = 600 },
 		Shares    = { size = 100 },
 		Nest      = { count = 0, size = 5, timer = 1200 },
@@ -136,15 +137,15 @@ local function is_menu_open()
 	local current_quest_menu = gui_manager:call("isNpcMenuOpen")
 	previous_quest_menu = current_quest_menu
 	
-	if current_menus_open and not previous_menus_open then
+	if previous_menus_open and not current_menus_open then
 		delay_timer = delay_timer + dt
-		if delay_timer >= menu_o_delay then
+		if delay_timer >= menu_i_delay then
 			previous_menus_open = current_menus_open
 			delay_timer = 0
 		end
-	elseif previous_menus_open and not current_menus_open then
+	elseif current_menus_open and not previous_menus_open then
 		delay_timer = delay_timer + dt
-		if delay_timer >= menu_i_delay then
+		if delay_timer >= menu_o_delay then
 			previous_menus_open = current_menus_open
 			delay_timer = 0
 		end
@@ -544,7 +545,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
             d2d.image(elem.value, xPos, icon_y, drawW, icon_d, alpha)
 			if elem.flag and config.draw_flags then
 				local flagX = xPos - drawW / 2 + margin * 1.5
-				local flagY = icon_y - icon_d / 2 + margin * 1.2
+				local flagY = is_in_tent() and icon_y - margin * 2.1 or icon_y - icon_d / 2 + margin * 1.2
 				d2d.image(img.flag, flagX, flagY, drawW, icon_d, alpha)
 			end
             xPos = xPos + elem.measured_width + gap
@@ -553,7 +554,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
 			local bar_w = icon_d * 0.75
 			local bar_h = icon_d / 25
 			local bar_x = xPos - gap - icon_d + (icon_d - bar_w) / 2
-			local bar_y = y + icon_d - bar_h * 0.75
+			local bar_y = is_in_tent() and y + bar_h * 1.5 or y + icon_d - bar_h * 0.75
 			local fill_w = bar_w * progress
 			d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, apply_opacity(color.background, alpha))
 			if elem.flag then
@@ -764,14 +765,14 @@ d2d.register(
 
         local tr_opacity    = config.tr_opacity * fade_value
 		local tr_user_scale = config.tr_user_scale
-        local tr_eff_scale  = screen_scale * tr_user_scale
+        local tr_eff_scale  = is_in_tent() and screen_scale * tr_user_scale * tent_ui_scale or screen_scale * tr_user_scale
         local tr_margin     = base_margin * tr_eff_scale
         local tr_bg_height  = 50 * tr_eff_scale
-        local tr_bg_y       = screen_h - tr_bg_height
+        local tr_bg_y       = is_in_tent() and 0 or screen_h - tr_bg_height
         local tr_bg_color   = apply_opacity(color.background, tr_opacity)
         local tr_icon_d     = tr_bg_height * 1.1
 		local tracker_gap   = 18 * tr_eff_scale
-		local tr_icon_y     = tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2
+		local tr_icon_y     = is_in_tent() and tr_bg_y + (tr_bg_height - tr_icon_d) / 2 or tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2
         local tr_font_size  = math.floor(tr_bg_height - tr_margin * 2)
         local tracker_font  = {
             name   = "Segoe UI",
@@ -827,11 +828,11 @@ d2d.register(
 		
         local tr_ref_font = d2d.Font.new(tracker_font.name, tracker_font.size, tracker_font.bold, tracker_font.italic)
         local _, ref_char_height = tr_ref_font:measure("A")
-        local tracker_txt_y = screen_h - ref_char_height
+        local tracker_txt_y = tr_bg_y + tr_bg_height - ref_char_height
         
         local tr_border_h      = base_border_h * tr_eff_scale
         local tr_end_border_w  = base_end_border_w * tr_eff_scale
-        local tr_border_y      = tr_bg_y - (tr_border_h / 2)
+        local tr_border_y      = is_in_tent() and tr_bg_height - (tr_border_h / 2) or tr_bg_y - (tr_border_h / 2)
         local tr_sect_border_x = tr_end_border_w - (tr_margin / 2)
         local tr_sect_border_w = screen_w - tr_end_border_w - tr_sect_border_x + tr_margin
 		
@@ -850,31 +851,31 @@ d2d.register(
         -- DRAWS
         -------------------------------------------------------------------
 		
-		-- if config.hide_w_hud and is_menu_open() and not is_in_tent() then return end
-		
-        -- Draw the ticker
-        if config.draw_ticker then
-            d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
-            d2d.image(img.border_left, 0, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
-            d2d.image(img.border_right, screen_w - ti_end_border_w, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
-            if ti_sect_border_w > 0 then
-                d2d.image(img.border_section, ti_sect_border_x, ti_border_y, ti_sect_border_w, ti_border_h, ti_opacity)
-            end
-            while current_x < screen_w do
-                drawElements(ticker_font, ticker_elements, current_x, ticker_txt_y, ti_icon_d, ti_icon_y, ticker_gap, ti_margin, color, ti_opacity)
-                current_x = current_x + totalTickerWidth
-            end
-        end
-		
-        -- Draw the tracker
-		if config.draw_tracker and not is_menu_open() and not is_in_tent() then
-			d2d.fill_rect(0, tr_bg_y, screen_w, tr_bg_height, tr_bg_color)
-			d2d.image(img.border_left, 0, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
-			d2d.image(img.border_right, screen_w - tr_end_border_w, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
-			if tr_sect_border_w > 0 then
-				d2d.image(img.border_section, tr_sect_border_x, tr_border_y, tr_sect_border_w, tr_border_h, tr_opacity)
+		if not config.hide_w_hud or (not is_menu_open() and not is_in_tent()) or (config.draw_in_tent and is_in_tent()) then
+			-- Draw the ticker
+			if config.draw_ticker then
+				d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
+				d2d.image(img.border_left, 0, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
+				d2d.image(img.border_right, screen_w - ti_end_border_w, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
+				if ti_sect_border_w > 0 then
+					d2d.image(img.border_section, ti_sect_border_x, ti_border_y, ti_sect_border_w, ti_border_h, ti_opacity)
+				end
+				while current_x < screen_w do
+					drawElements(ticker_font, ticker_elements, current_x, ticker_txt_y, ti_icon_d, ti_icon_y, ticker_gap, ti_margin, color, ti_opacity)
+					current_x = current_x + totalTickerWidth
+				end
 			end
-			drawElements(tracker_font, tracker_elements, tracker_start_x, tracker_txt_y, tr_icon_d, tr_icon_y, tracker_gap, tr_margin, color, tr_opacity)
+			
+			-- Draw the tracker
+			if config.draw_tracker then
+				d2d.fill_rect(0, tr_bg_y, screen_w, tr_bg_height, tr_bg_color)
+				d2d.image(img.border_left, 0, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
+				d2d.image(img.border_right, screen_w - tr_end_border_w, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
+				if tr_sect_border_w > 0 then
+					d2d.image(img.border_section, tr_sect_border_x, tr_border_y, tr_sect_border_w, tr_border_h, tr_opacity)
+				end
+				drawElements(tracker_font, tracker_elements, tracker_start_x, tracker_txt_y, tr_icon_d, tr_icon_y, tracker_gap, tr_margin, color, tr_opacity)
+			end
 		end
 		
 		-- Draw the moon
@@ -898,10 +899,10 @@ re.on_draw_ui(function()
         
         local checkboxes = {
             { "Display Tracker", "draw_tracker" },
-			{ "Hide with HUD", "hide_w_hud" },
-			{ "Progress Bars", "draw_bars" },
-			{ "Timers", "draw_timers" },
-			{ "Flags", "draw_flags" }
+			{ "Progress Bars",   "draw_bars"    },
+			{ "Timers",          "draw_timers"  },
+			{ "Flags",           "draw_flags"   },
+			{ "Hide with HUD",   "hide_w_hud"   }
         }
         for _, cb in ipairs(checkboxes) do
             local label, key = cb[1], cb[2]
@@ -912,16 +913,21 @@ re.on_draw_ui(function()
             end
         end
 		
-		imgui.text("Quest menu: " .. tostring(previous_quest_menu))
-		imgui.text("Any menu: " .. tostring(previous_menus_open))
+		if config.hide_w_hud then
+			local changedBox, newVal = imgui.checkbox("Show in tent", config.draw_in_tent)
+			if changedBox then
+				config.draw_in_tent = newVal
+				save_config()
+			end
+		end
 		
         imgui.tree_pop()
     end
 	
 	if imgui.tree_node("Moon Phase Tracker") then
         local checkboxes = {
-            { "Display Moon Phase", "draw_moon" },
-			{ "Display Numerals", "draw_m_num" }
+            { "Display Moon Phase", "draw_moon"  },
+			{ "Display Numerals",   "draw_m_num" }
         }
         for _, cb in ipairs(checkboxes) do
             local label, key = cb[1], cb[2]

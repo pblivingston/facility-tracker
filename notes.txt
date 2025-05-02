@@ -1,3 +1,31 @@
+
+hotkey toggle
+reposition moon in rest menu
+hide moon in trading area
+hide in quest
+ - hide in combat only
+ship/trades ticker
+ - reposition ticker in tent
+moon position for non-16:9
+shares flag shows when items are available
+
+
+
+- users will need to delete config when updating
+- tracker toggle added to reframework ui
+- toggle-able progress bars added
+- option to hide with hud added
+	- hides when menu open
+		- option to show in tent (different position)
+	- hides when fast travel/loading screen
+- moon hides with hud
+	- hides when menu open (including tent)
+	- hides when fast travel/loading screen
+
+
+
+
+
  - support center (probably)
     - <Bounty>k__BackingField
     - app.FacilityBounty
@@ -9,30 +37,6 @@ Trader 0 - Kilama
 Trader 1 - Musharpeye
 Trader 2 - Gawdygog
 Trader 3 - Aida
-
-
-
-toggle-able progress bars - done!
-hide with hud
- - reposition tracker in tent
- - reposition moon in rest menu
-hide in quest
- - hide in combat only
-ship/trades ticker
- - reposition ticker in tent
-moon position for non-16:9
-
-manual toggle? - done!
-hotkey toggle?
-
-shares flag shows when items are available?
-
-
-
-
- - users will need to delete config when updating
- - tracker toggle added to reframework ui
- - toggle-able progress bars added
 
 
 
@@ -57,39 +61,9 @@ app.EnvironmentManager
 		get_field "_Count"
 app.SaveDataManager
 
-
-
 app.GUIManager
 	get_field "_HudDisplayManager"
 		hook "isHudVisible"
-		
-		
-		
-if player is in training area, hide the moon
-
-menus
-maps
-
-
-
-on app.GUIManager
-	- isExistGUI020001AccessPanel might be button prompts, both fixed and dynamic
-	- 
-
-
-draw moon
-	config.draw_moon
-	not is_in_tent()
-	not is_menu_open()
-	
-
-draw tracker
-	config.draw_tracker
-	
-
-
-
-
 
 
 
@@ -130,7 +104,6 @@ draw tracker
   - get_IsPorterRidingConstSaddle (System.Boolean)
   - isEnablePorterCall (System.Boolean)
   
-
 
 
 Successfully retrieved <Character>k__BackingField (app.HunterCharacter).
