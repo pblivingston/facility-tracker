@@ -11,9 +11,8 @@ local in_delay             = 0.15
 local in_speed             = 1
 local out_delay            = 0
 local out_speed            = 2.5
-local menu_o_delay         = 0.1
-local menu_i_delay         = 0.5
-local menu_qi_delay        = 10
+local menu_o_delay         = 0.06
+local menu_i_delay         = 0.3
 local previous_timer_value = {}
 local tidx                 = {
     ration  = 0,
@@ -53,21 +52,22 @@ local img              = {}
 
 local config_path = "facility_tracker.json"
 local config = {
-    countdown 	   = 3,
-	hide_w_hud     = true,
-    draw_ticker    = false,
-	draw_tracker   = true,
-    ti_user_scale  = 1.0,
-    ti_speed_scale = 1.0,
-    ti_opacity     = 1.0,
-    tr_user_scale  = 1.0,
-    tr_opacity     = 1.0,
-    draw_timers    = false,
-	draw_bars      = true,
-	draw_flags     = true,
-	draw_moon      = true,
-	draw_m_num     = false,
-	box_datas	   = {
+    countdown 	    = 3,
+	hide_w_hud      = true,
+    draw_ticker     = false,
+	draw_tracker    = true,
+    ti_user_scale   = 1.0,
+    ti_speed_scale  = 1.0,
+    ti_opacity      = 1.0,
+    tr_user_scale   = 1.0,
+    tr_opacity      = 1.0,
+	tracker_in_tent = false,
+    draw_timers     = false,
+	draw_bars       = true,
+	draw_flags      = true,
+	draw_moon       = true,
+	draw_m_num      = false,
+	box_datas	    = {
 		Rations   = { size = 10, timer = 600 },
 		Shares    = { size = 100 },
 		Nest      = { count = 0, size = 5, timer = 1200 },
@@ -131,14 +131,34 @@ local function is_active_player()
 	return true
 end
 
-local function is_visible_hud()
+local function is_menu_open()
 	local current_menus_open = gui_manager:call("get_IsHighHudInput")
 	local current_quest_menu = gui_manager:call("isNpcMenuOpen")
+	previous_quest_menu = current_quest_menu
+	
+	if current_menus_open and not previous_menus_open then
+		delay_timer = delay_timer + dt
+		if delay_timer >= menu_o_delay then
+			previous_menus_open = current_menus_open
+			delay_timer = 0
+		end
+	elseif previous_menus_open and not current_menus_open then
+		delay_timer = delay_timer + dt
+		if delay_timer >= menu_i_delay then
+			previous_menus_open = current_menus_open
+			delay_timer = 0
+		end
+	else
+		previous_menus_open = current_menus_open
+	end
+	
+	return previous_menus_open
+end
+
+local function is_in_tent()
 	local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
 	local in_tent = character:call("get_IsInAllTent")
-	
-	
-	return true
+	return in_tent
 end
 
 local function get_fade()
@@ -658,7 +678,6 @@ d2d.register(
     end,
     function()
         if not is_active_player() then return end
-		if not is_visible_hud() and config.hide_w_hud then return end
     
         local screen_w, screen_h = d2d.surface_size()
         local screen_scale       = screen_h / 2160.0
@@ -830,7 +849,9 @@ d2d.register(
         -------------------------------------------------------------------
         -- DRAWS
         -------------------------------------------------------------------
-
+		
+		-- if config.hide_w_hud and is_menu_open() and not is_in_tent() then return end
+		
         -- Draw the ticker
         if config.draw_ticker then
             d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
@@ -844,9 +865,9 @@ d2d.register(
                 current_x = current_x + totalTickerWidth
             end
         end
-
+		
         -- Draw the tracker
-		if config.draw_tracker then
+		if config.draw_tracker and not is_menu_open() and not is_in_tent() then
 			d2d.fill_rect(0, tr_bg_y, screen_w, tr_bg_height, tr_bg_color)
 			d2d.image(img.border_left, 0, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
 			d2d.image(img.border_right, screen_w - tr_end_border_w, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
@@ -857,7 +878,7 @@ d2d.register(
 		end
 		
 		-- Draw the moon
-		if config.draw_moon then
+		if config.draw_moon and not is_in_tent() and not is_menu_open() then
 			d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, fade_value)
             d2d.image(moon, moon_x, moon_y, moon_w, moon_h, fade_value)
 			if config.draw_m_num then

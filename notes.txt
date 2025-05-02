@@ -77,6 +77,18 @@ on app.GUIManager
 	- 
 
 
+draw moon
+	config.draw_moon
+	not is_in_tent()
+	not is_menu_open()
+	
+
+draw tracker
+	config.draw_tracker
+	
+
+
+
 
 
 
