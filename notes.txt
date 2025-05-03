@@ -1,30 +1,66 @@
-
+hide on area title
 hotkey toggle
 reposition moon in rest menu
-hide moon in trading area
 hide in quest
  - hide in combat only
 ship/trades ticker
  - reposition ticker in tent
 moon position for non-16:9
-shares flag shows when items are available
+shares flag on items available
 
 
 
 - users will need to delete config when updating
-- tracker toggle added to reframework ui
-- toggle-able progress bars added
-- option to hide with hud added
-	- hides when menu open
+- added tracker toggle
+- added toggle-able progress bars
+- added option to hide tracker with hud
+	- fades away when fast travel/loading screen
+	- hides when menu open/quest end shows
 		- option to show in tent (different position)
-	- hides when fast travel/loading screen
-- moon hides with hud
+- added option to hide moon with hud
 	- hides when menu open (including tent)
 	- hides when fast travel/loading screen
+	- hides in training area
+
+0 - plains
+1 - forest
+2 - basin
+3 - cliffs
+4 - ruins
+5 - riverside trail (plains <-> forest)
+6 - cavern tunnel (forest <-> basin)
+7 - lost path to wyveria (cliffs <-> ruins)
+8 - keeper's approach (ruins <-> peaks)
+9 - arena
+10 - rimechain peak
+12 - suja
+14 - hub
+15 - training area
+
+plains base camp
+plains
+plains kunafa
+forest
+forest base camp
+forest wudwud
+basin
+basin base camp
+basin azuz
+cliffs
+cliffs base camp
+ruins
+ruins base camp
+ruins sild
+suja (life area)
+arena
+grand hub (base camp)
+training
 
 
+in on_frame if not is_active_player, set visible
 
-
+if stage, life area, or base camp change then
+	
 
  - support center (probably)
     - <Bounty>k__BackingField

@@ -3,6 +3,7 @@ local json = json
 local captured_args        = nil
 local previous_hidden      = false
 local previous_fading      = false
+local previous_quest_end   = false
 local previous_menus_open  = false
 local previous_quest_menu  = false
 local fade_value           = 0
@@ -18,6 +19,25 @@ local tidx                 = {
     ration  = 0,
     pugee   = 10,
     nest    = 11
+}
+
+local visited = {}
+local stage_id  = -1
+local stage_idx = {
+	plains   = 0,
+	forest   = 1,
+	basin    = 2,
+	cliffs   = 3,
+	ruins    = 4,
+	trail    = 5,
+	tunnel   = 6,
+	l_path   = 7,
+	approach = 8,
+	arena    = 9,
+	peak     = 10,
+	suja     = 12,
+	g_hub    = 14,
+	training = 15
 }
 
 local is_in_port              = false
@@ -55,6 +75,7 @@ local config_path = "facility_tracker.json"
 local config = {
     countdown 	   = 3,
 	hide_w_hud     = true,
+	hide_mw_hud    = true,
     draw_ticker    = false,
 	draw_tracker   = true,
     ti_user_scale  = 1.0,
@@ -132,15 +153,17 @@ local function is_active_player()
 	return true
 end
 
-local function is_menu_open()
+local function is_hud_hidden()
+	local current_quest_end = mission_manager:call("get_IsQuestEndShowing")
 	local current_menus_open = gui_manager:call("get_IsHighHudInput")
 	local current_quest_menu = gui_manager:call("isNpcMenuOpen")
 	previous_quest_menu = current_quest_menu
 	
-	if previous_menus_open and not current_menus_open then
+	if (previous_menus_open and not current_menus_open) or (previous_quest_end and not current_quest_end) then
 		delay_timer = delay_timer + dt
 		if delay_timer >= menu_i_delay then
 			previous_menus_open = current_menus_open
+			previous_quest_end = current_quest_end
 			delay_timer = 0
 		end
 	elseif current_menus_open and not previous_menus_open then
@@ -151,9 +174,13 @@ local function is_menu_open()
 		end
 	else
 		previous_menus_open = current_menus_open
+		previous_quest_end = current_quest_end
 	end
 	
-	return previous_menus_open
+	if previous_quest_end or previous_menus_open then
+		return true
+	end
+	return false
 end
 
 local function is_in_tent()
@@ -602,9 +629,22 @@ re.on_frame(
             config.box_datas.Nest.count = 0
 			nest_timer_reset = false
 			nest_state_reset = false
+			visited = {
+				plains   = { field = false, life_area = false, base_camp = false },
+				forest   = { field = false, life_area = false, base_camp = false },
+				basin    = { field = false, life_area = false, base_camp = false },
+				cliffs   = { field = false, base_camp = false },
+				ruins    = { field = false, life_area = false, base_camp = false },
+				arena    = { field = false },
+				suja     = { life_area = false },
+				g_hub    = { base_camp = false },
+				training = { field = false }
+			}
             save_config()
             return
         end
+		
+		stage_id = environment_manager and environment_manager:get_field("_CurrentStage")
 		
 		if config.hide_w_hud then get_fade() else fade_value = 1 end
 		
@@ -851,7 +891,7 @@ d2d.register(
         -- DRAWS
         -------------------------------------------------------------------
 		
-		if not config.hide_w_hud or (not is_menu_open() and not is_in_tent()) or (config.draw_in_tent and is_in_tent()) then
+		if not config.hide_w_hud or (not is_hud_hidden() and not is_in_tent()) or (config.draw_in_tent and is_in_tent()) then
 			-- Draw the ticker
 			if config.draw_ticker then
 				d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
@@ -879,7 +919,7 @@ d2d.register(
 		end
 		
 		-- Draw the moon
-		if config.draw_moon and not is_in_tent() and not is_menu_open() then
+		if config.draw_moon and (not config.hide_mw_hud or (not is_in_tent() and not is_hud_hidden() and stage_id ~= stage_idx.training)) then
 			d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, fade_value)
             d2d.image(moon, moon_x, moon_y, moon_w, moon_h, fade_value)
 			if config.draw_m_num then
@@ -926,8 +966,9 @@ re.on_draw_ui(function()
 	
 	if imgui.tree_node("Moon Phase Tracker") then
         local checkboxes = {
-            { "Display Moon Phase", "draw_moon"  },
-			{ "Display Numerals",   "draw_m_num" }
+            { "Display Moon Phase", "draw_moon"   },
+			{ "Display Numerals",   "draw_m_num"  },
+			{ "Hide with HUD",      "hide_mw_hud" }
         }
         for _, cb in ipairs(checkboxes) do
             local label, key = cb[1], cb[2]
