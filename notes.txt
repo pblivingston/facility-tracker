@@ -1,4 +1,3 @@
-hide on area title
 hotkey toggle
 reposition moon in rest menu
 hide in quest
@@ -15,7 +14,7 @@ shares flag on items available
 - added toggle-able progress bars
 - added option to hide tracker with hud
 	- fades away when fast travel/loading screen
-	- hides when menu open/quest end shows
+	- hides when menu open/quest end/area title shows
 		- option to show in tent (different position)
 - added option to hide moon with hud
 	- hides when menu open (including tent)
@@ -57,9 +56,43 @@ grand hub (base camp)
 training
 
 
+I want a function get_first_visit() that I can call on frame that does the following:
+ - get the _CurrentStage field of environment_manager ('current_stage')
+ - get the <Character>k__BackingField field I've gotten elsewhere in the script ('character')
+ - call get_IsInLifeArea on the character field ('current_life_area')
+ - call get_IsInBaseCamp on the character field ('current_base_camp')
+ - if the stage or life area or base camp change (previous_stage ~= current_stage, etc), do the following:
+ - get the current stage name ('stage') by checking the values in stage_idx against current_stage and returning the corresponding key
+ - if the current stage name corresponds to an entry in the 'visited' table, do the following:
+ - if current_base_camp and not visited[stage].base_camp, do the following:
+ - start a delay_timer
+ - once delay_timer >= visit_o_delay, do the following:
+ - set first_visit to true
+ - reset delay_timer
+ - start a new delay_timer
+ - once delay_timer >= visit_i_delay, do the following:
+ - set previous_stage to current_stage
+ - set previous_life_area to current_life_area
+ - set previous_base_camp to current_base_camp
+ - set visited[stage].base_camp to true
+ - set first_visit to false
+ - reset delay_timer
+ - do the same as above, swapping out visited[stage].base_camp appropriately, for:
+ - if current_life_area and not current_base_camp and not visited[stage].life_area
+ - if not current_life_area and not current_base_camp and not visited[stage].field
+
+I will initialize previous_stage, previous_life_area, previous_base_camp, visit_o_delay, visit_i_delay, and first_visit earlier in the script
+
+
+
 in on_frame if not is_active_player, set visible
 
 if stage, life area, or base camp change then
+	check stage_idx values for 
+	
+	
+	set first_visit to true
+	
 	
 
  - support center (probably)

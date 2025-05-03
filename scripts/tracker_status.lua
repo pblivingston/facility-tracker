@@ -36,28 +36,17 @@ local field_manager = sdk.get_managed_singleton("app.MasterFieldManager")
 local camera_manager = sdk.get_managed_singleton("app.CameraManager")
 
 local character_methods = {
-    { label = "Draw off", method = "get_IsDrawOff" },
-    { label = "Combat", method = "get_IsCombat" },
-    { label = "Half Combat", method = "get_IsHalfCombat" },
-    { label = "Combat Cage", method = "get_IsCombatCageLight" },
     { label = "Life Area", method = "get_IsInLifeArea" },
     { label = "Base Camp", method = "get_IsInBaseCamp" },
-    { label = "Camp Layout", method = "get_IsCampLayoutMode" },
+	{ label = "Riding", method = "get_IsPorterRiding" },
+	{ label = "In saddle", method = "get_IsPorterRidingConstSaddle" },
     { label = "In any", method = "get_IsInAllTent" },
     { label = "In tent", method = "get_IsInTent" },
     { label = "In temp", method = "get_IsInTempTent" },
-    { label = "Climbing", method = "get_IsClimbWall" },
-    { label = "In dam", method = "get_IsInDam" },
-    { label = "In stream", method = "get_IsInMuddyStream" },
-    { label = "In wave", method = "get_IsInEnemyWave" },
-    { label = "In hot area", method = "get_IsInHotArea" },
-    { label = "In cold area", method = "get_IsInColdArea" },
-    { label = "In select area", method = "IsInSelectArea" },
-    { label = "Gimmick Cancel", method = "get_IsGimmickPullCancel" },
-    { label = "Strong slinger", method = "get_IsCanShootStrongSringer" },
-    { label = "Riding", method = "get_IsPorterRiding" },
-    { label = "Riding saddle", method = "get_IsPorterRidingConstSaddle" },
-    { label = "Can call ride", method = "isEnablePorterCall" },
+    { label = "Combat", method = "get_IsCombat" },
+    { label = "Half Combat", method = "get_IsHalfCombat" },
+    { label = "Combat Cage", method = "get_IsCombatCageLight" },
+	{ label = "Draw off", method = "get_IsDrawOff" }
 }
 
 re.on_draw_ui(function()
@@ -68,7 +57,7 @@ re.on_draw_ui(function()
 	end
 	
 	if imgui.tree_node("Mission") then
-		local success, result = pcall(function() return mission_manager:call("get_ContinueFading") end)
+		local success, result = pcall(function() return mission_manager:call("isFastTravel") end)
 		imgui.text("result: " .. tostring(result))
 		imgui.tree_pop()
 	end

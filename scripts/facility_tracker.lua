@@ -8,12 +8,16 @@ local previous_menus_open  = false
 local previous_quest_menu  = false
 local fade_value           = 0
 local delay_timer          = 0
+local delay_2_timer        = 0
 local in_delay             = 0.15
 local in_speed             = 1
 local out_delay            = 0
 local out_speed            = 2.5
 local menu_o_delay         = 0.06
 local menu_i_delay         = 0.7
+local visit_o_delay        = 0.35
+local visit_i_delay        = 4.29
+local visit_fade_th        = 0.3
 local previous_timer_value = {}
 local tidx                 = {
     ration  = 0,
@@ -21,7 +25,11 @@ local tidx                 = {
     nest    = 11
 }
 
-local visited = {}
+local stage = nil
+local previous_stage = -1
+local previous_life_area = false
+local previous_base_camp = false
+local first_visit = false
 local stage_id  = -1
 local stage_idx = {
 	plains   = 0,
@@ -67,7 +75,7 @@ local table_scale      = 0.9
 local timer_scale      = 0.42
 local flag_scale       = 0.4
 local ti_scroll_offset = 0
-local tent_ui_scale    = 0.9
+local tent_ui_scale    = 0.88
 local color            = {}
 local img              = {}
 
@@ -83,7 +91,7 @@ local config = {
     ti_opacity     = 1.0,
     tr_user_scale  = 1.0,
     tr_opacity     = 1.0,
-	draw_in_tent   = false,
+	draw_in_tent   = true,
     draw_timers    = false,
 	draw_bars      = true,
 	draw_flags     = true,
@@ -100,6 +108,17 @@ local config = {
 		Apar      = { count = 0, size = 16 },
 		Plumpeach = { count = 0, size = 16 },
 		Sabar     = { count = 0, size = 16 }
+	},
+	visited = {
+		plains   = { field = false, life_area = false, base_camp = false },
+		forest   = { field = false, life_area = false, base_camp = false },
+		basin    = { field = false, life_area = false, base_camp = false },
+		cliffs   = { field = false, base_camp = false },
+		ruins    = { field = false, life_area = false, base_camp = false },
+		arena    = { field = false },
+		suja     = { field = true,  life_area = false },
+		g_hub    = { base_camp = false },
+		training = { field = false }
 	}
 }
 
@@ -153,6 +172,76 @@ local function is_active_player()
 	return true
 end
 
+local function get_first_visit()
+    local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
+    local current_life_area = character:call("get_IsInLifeArea")
+    local current_base_camp = character:call("get_IsInBaseCamp")
+	local riding            = character:call("get_IsPorterRiding")
+	local fast_travel       = mission_manager:call("isFastTravel")
+    
+    if not fast_travel and fade_value >= visit_fade_th and (previous_stage ~= stage_id or previous_life_area ~= current_life_area or previous_base_camp ~= current_base_camp) then
+        for key, value in pairs(stage_idx) do
+            if value == stage_id then
+                stage = key
+                break
+            end
+        end
+		
+        if not stage or not config.visited[stage] then return end
+
+        if current_base_camp and not config.visited[stage].base_camp then
+            delay_timer = delay_timer + dt
+            if delay_timer >= visit_o_delay then
+                first_visit = true
+                delay_2_timer = delay_2_timer + dt
+                if delay_2_timer >= visit_i_delay then
+                    previous_stage = stage_id
+                    previous_life_area = current_life_area
+                    previous_base_camp = current_base_camp
+                    config.visited[stage].base_camp = true
+                    first_visit = false
+					delay_2_timer = 0
+                    delay_timer = 0
+                end
+            end
+		elseif current_life_area and not current_base_camp and not config.visited[stage].life_area then
+            delay_timer = delay_timer + dt
+            if delay_timer >= visit_o_delay then
+                first_visit = true
+                delay_2_timer = delay_2_timer + dt
+                if delay_2_timer >= visit_i_delay then
+                    previous_stage = stage_id
+                    previous_life_area = current_life_area
+                    previous_base_camp = current_base_camp
+                    config.visited[stage].life_area = true
+                    first_visit = false
+					delay_2_timer = 0
+                    delay_timer = 0
+                end
+            end
+        elseif not current_life_area and not current_base_camp and not config.visited[stage].field then
+            delay_timer = delay_timer + dt
+            if delay_timer >= visit_o_delay then
+                first_visit = true
+                delay_2_timer = delay_2_timer + dt
+                if delay_2_timer >= visit_i_delay then
+                    previous_stage = stage_id
+                    previous_life_area = current_life_area
+                    previous_base_camp = current_base_camp
+                    config.visited[stage].field = true
+                    first_visit = false
+					delay_2_timer = 0
+                    delay_timer = 0
+                end
+            end
+        else
+			previous_stage = stage_id
+			previous_base_camp = current_base_camp
+			previous_life_area = current_life_area
+		end
+	end
+end
+
 local function is_hud_hidden()
 	local current_quest_end = mission_manager:call("get_IsQuestEndShowing")
 	local current_menus_open = gui_manager:call("get_IsHighHudInput")
@@ -177,7 +266,7 @@ local function is_hud_hidden()
 		previous_quest_end = current_quest_end
 	end
 	
-	if previous_quest_end or previous_menus_open then
+	if previous_quest_end or previous_menus_open or first_visit then
 		return true
 	end
 	return false
@@ -190,8 +279,10 @@ local function is_in_tent()
 end
 
 local function get_fade()
+	local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
 	local current_hidden = fade_manager:call("get_IsVisibleStateAny")
 	local current_fading = fade_manager:call("get_IsFadingAny")
+	
 	
 	if current_fading and not previous_fading then
 		delay_timer = delay_timer + dt
@@ -581,7 +672,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
 			local bar_w = icon_d * 0.75
 			local bar_h = icon_d / 25
 			local bar_x = xPos - gap - icon_d + (icon_d - bar_w) / 2
-			local bar_y = is_in_tent() and y + bar_h * 1.5 or y + icon_d - bar_h * 0.75
+			local bar_y = is_in_tent() and y + bar_h * 2 or y + icon_d - bar_h * 0.75
 			local fill_w = bar_w * progress
 			d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, apply_opacity(color.background, alpha))
 			if elem.flag then
@@ -629,14 +720,17 @@ re.on_frame(
             config.box_datas.Nest.count = 0
 			nest_timer_reset = false
 			nest_state_reset = false
-			visited = {
+			previous_stage = -1
+			previous_life_area = false
+			previous_base_camp = false
+			config.visited = {
 				plains   = { field = false, life_area = false, base_camp = false },
 				forest   = { field = false, life_area = false, base_camp = false },
 				basin    = { field = false, life_area = false, base_camp = false },
 				cliffs   = { field = false, base_camp = false },
 				ruins    = { field = false, life_area = false, base_camp = false },
 				arena    = { field = false },
-				suja     = { life_area = false },
+				suja     = { field = true,  life_area = false },
 				g_hub    = { base_camp = false },
 				training = { field = false }
 			}
@@ -648,6 +742,7 @@ re.on_frame(
 		
 		if config.hide_w_hud then get_fade() else fade_value = 1 end
 		
+		get_first_visit()
         get_ration_state()
         get_ship_state()
         get_shares_state()

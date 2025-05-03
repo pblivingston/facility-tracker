@@ -1,6 +1,8 @@
 # facility-tracker
 Facility tracker for Monster Hunter Wilds
 
+Displays a tracker for resource availability at various facilities.
+
 Adds a tracker to the bottom of the screen displaying Support Ship status, Rations available at the Ingredient Center, items available from Material Retrieval and Festival Shares, Trinkets available in the nest in the Grand Hub, and when Poogie has an item.
 
 Prerequisites:
@@ -26,13 +28,13 @@ Uninstallation:
 
 When you first install the mod, the Material Retrieval counts WILL BE WRONG and the Support Ship might show an incorrect countdown. Material Retrieval can be corrected by progressing the game's day counter or collecting any available items. The Support Ship countdown can sometimes be corrected by progressing the day counter. Having the ship leave entirely should always ensure the countdown is correct the next time it is in port. Midnight passing naturally or changing the time of day by Resting progresses the day counter. Note that the day counter progresses no matter what time of day you choose when you Rest. Even Resting from Morning to Daytime progresses the day counter. Changing the weather does not progress the day counter.
 
-Both timers and flags ("!") can be toggled. Timers are off by default. Note that if you toggle both timers and flags off, you won't be able to see when Poogie has an item.
+Progress bars, timers, and flags ("!") can be toggled. Timers are off by default. Note that if you toggle all three off, you won't be able to see when Poogie has an item.
 
 Planned features:
 
-    Toggle-able progress bars - A small line at the bottom of the facility icon that fills up as the timer ticks down. Less intrusive than the timers.
-    Hide with HUD - Detect when the HUD is not visible and hide the tracker.
-    An option to reposition the tracker instead of hide it when the player is in a tent.
+    Toggle-able progress bars - A small line at the bottom of the facility icon that fills up as the timer ticks down. Less intrusive than the timers.   --- ADDED!
+    Hide with HUD - Detect when the HUD is not visible and hide the tracker.   --- ADDED!
+    An option to reposition the tracker instead of hide it when the player is in a tent.   --- ADDED!
     Support Ship/Trades ticker - A scrolling ticker at the top of the screen displaying the items currently available at the Support Ship if it is in port and the currently available NPC trades. Figuring out how to see what these are has proven pretty difficult, so this may simply not happen.
 
 

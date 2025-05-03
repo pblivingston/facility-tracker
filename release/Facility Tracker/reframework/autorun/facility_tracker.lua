@@ -1,6 +1,23 @@
 local json = json
 
 local captured_args        = nil
+local previous_hidden      = false
+local previous_fading      = false
+local previous_quest_end   = false
+local previous_menus_open  = false
+local previous_quest_menu  = false
+local fade_value           = 0
+local delay_timer          = 0
+local delay_2_timer        = 0
+local in_delay             = 0.15
+local in_speed             = 1
+local out_delay            = 0
+local out_speed            = 2.5
+local menu_o_delay         = 0.06
+local menu_i_delay         = 0.7
+local visit_o_delay        = 0.35
+local visit_i_delay        = 4.29
+local visit_fade_th        = 0.3
 local previous_timer_value = {}
 local tidx                 = {
     ration  = 0,
@@ -8,8 +25,28 @@ local tidx                 = {
     nest    = 11
 }
 
-local ration_timer        = 0
-local supply_timer_active = false
+local stage = nil
+local previous_stage = -1
+local previous_life_area = false
+local previous_base_camp = false
+local first_visit = false
+local stage_id  = -1
+local stage_idx = {
+	plains   = 0,
+	forest   = 1,
+	basin    = 2,
+	cliffs   = 3,
+	ruins    = 4,
+	trail    = 5,
+	tunnel   = 6,
+	l_path   = 7,
+	approach = 8,
+	arena    = 9,
+	peak     = 10,
+	suja     = 12,
+	g_hub    = 14,
+	training = 15
+}
 
 local is_in_port              = false
 local previous_in_port        = true
@@ -38,35 +75,50 @@ local table_scale      = 0.9
 local timer_scale      = 0.42
 local flag_scale       = 0.4
 local ti_scroll_offset = 0
+local tent_ui_scale    = 0.88
 local color            = {}
 local img              = {}
 
 local config_path = "facility_tracker.json"
 local config = {
     countdown 	   = 3,
-    shares_cap     = 100,
+	hide_w_hud     = true,
+	hide_mw_hud    = true,
     draw_ticker    = false,
+	draw_tracker   = true,
     ti_user_scale  = 1.0,
     ti_speed_scale = 1.0,
     ti_opacity     = 1.0,
     tr_user_scale  = 1.0,
     tr_opacity     = 1.0,
+	draw_in_tent   = true,
     draw_timers    = false,
+	draw_bars      = true,
 	draw_flags     = true,
 	draw_moon      = true,
-	moons          = true,
-	moons_txt      = false,
+	draw_m_num     = false,
 	box_datas	   = {
-		ration = { size = 10 },
-		shares = { size = 100 },
-		nest = { count = 0, size = 5 },
-		pugee = {},
+		Rations   = { size = 10, timer = 600 },
+		Shares    = { size = 100 },
+		Nest      = { count = 0, size = 5, timer = 1200 },
+		pugee     = { timer = 2520 },
 		retrieval = {},
-		Rysher = { count = 0, size = 16 },
-		Murtabak = { count = 0, size = 16 },
-		Apar = { count = 0, size = 16 },
+		Rysher    = { count = 0, size = 16 },
+		Murtabak  = { count = 0, size = 16 },
+		Apar      = { count = 0, size = 16 },
 		Plumpeach = { count = 0, size = 16 },
-		Sabar = { count = 0, size = 16 }
+		Sabar     = { count = 0, size = 16 }
+	},
+	visited = {
+		plains   = { field = false, life_area = false, base_camp = false },
+		forest   = { field = false, life_area = false, base_camp = false },
+		basin    = { field = false, life_area = false, base_camp = false },
+		cliffs   = { field = false, base_camp = false },
+		ruins    = { field = false, life_area = false, base_camp = false },
+		arena    = { field = false },
+		suja     = { field = true,  life_area = false },
+		g_hub    = { base_camp = false },
+		training = { field = false }
 	}
 }
 
@@ -91,6 +143,10 @@ end
 
 local facility_manager    = sdk.get_managed_singleton("app.FacilityManager")
 local environment_manager = sdk.get_managed_singleton("app.EnvironmentManager")
+local mission_manager     = sdk.get_managed_singleton("app.MissionManager")
+local fade_manager        = sdk.get_managed_singleton("app.FadeManager")
+local gui_manager         = sdk.get_managed_singleton("app.GUIManager")
+local player_manager      = sdk.get_managed_singleton("app.PlayerManager")
 local timers              = facility_manager:get_field("<_FacilityTimers>k__BackingField")
 local dining              = facility_manager:get_field("<Dining>k__BackingField")
 local ship                = facility_manager:get_field("<Ship>k__BackingField")
@@ -99,6 +155,168 @@ local retrieval           = facility_manager:get_field("<Collection>k__BackingFi
 
 local function capture_args(args)
     captured_args = args
+end
+
+local function is_active_player()
+	if not timers or timers:get_field("_size") == 0 then
+		return false
+	end
+	local info_success, info = pcall(function() return player_manager:call("getMasterPlayerInfo") end)
+	if not info_success or not info then
+		return false
+	end
+	local character_success, character = pcall(function() return info:get_field("<Character>k__BackingField") end)
+	if not character_success or not character then
+		return false
+	end
+	return true
+end
+
+local function get_first_visit()
+    local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
+    local current_life_area = character:call("get_IsInLifeArea")
+    local current_base_camp = character:call("get_IsInBaseCamp")
+	local riding            = character:call("get_IsPorterRiding")
+	local fast_travel       = mission_manager:call("isFastTravel")
+    
+    if not fast_travel and fade_value >= visit_fade_th and (previous_stage ~= stage_id or previous_life_area ~= current_life_area or previous_base_camp ~= current_base_camp) then
+        for key, value in pairs(stage_idx) do
+            if value == stage_id then
+                stage = key
+                break
+            end
+        end
+		
+        if not stage or not config.visited[stage] then return end
+
+        if current_base_camp and not config.visited[stage].base_camp then
+            delay_timer = delay_timer + dt
+            if delay_timer >= visit_o_delay then
+                first_visit = true
+                delay_2_timer = delay_2_timer + dt
+                if delay_2_timer >= visit_i_delay then
+                    previous_stage = stage_id
+                    previous_life_area = current_life_area
+                    previous_base_camp = current_base_camp
+                    config.visited[stage].base_camp = true
+                    first_visit = false
+					delay_2_timer = 0
+                    delay_timer = 0
+                end
+            end
+		elseif current_life_area and not current_base_camp and not config.visited[stage].life_area then
+            delay_timer = delay_timer + dt
+            if delay_timer >= visit_o_delay then
+                first_visit = true
+                delay_2_timer = delay_2_timer + dt
+                if delay_2_timer >= visit_i_delay then
+                    previous_stage = stage_id
+                    previous_life_area = current_life_area
+                    previous_base_camp = current_base_camp
+                    config.visited[stage].life_area = true
+                    first_visit = false
+					delay_2_timer = 0
+                    delay_timer = 0
+                end
+            end
+        elseif not current_life_area and not current_base_camp and not config.visited[stage].field then
+            delay_timer = delay_timer + dt
+            if delay_timer >= visit_o_delay then
+                first_visit = true
+                delay_2_timer = delay_2_timer + dt
+                if delay_2_timer >= visit_i_delay then
+                    previous_stage = stage_id
+                    previous_life_area = current_life_area
+                    previous_base_camp = current_base_camp
+                    config.visited[stage].field = true
+                    first_visit = false
+					delay_2_timer = 0
+                    delay_timer = 0
+                end
+            end
+        else
+			previous_stage = stage_id
+			previous_base_camp = current_base_camp
+			previous_life_area = current_life_area
+		end
+	end
+end
+
+local function is_hud_hidden()
+	local current_quest_end = mission_manager:call("get_IsQuestEndShowing")
+	local current_menus_open = gui_manager:call("get_IsHighHudInput")
+	local current_quest_menu = gui_manager:call("isNpcMenuOpen")
+	previous_quest_menu = current_quest_menu
+	
+	if (previous_menus_open and not current_menus_open) or (previous_quest_end and not current_quest_end) then
+		delay_timer = delay_timer + dt
+		if delay_timer >= menu_i_delay then
+			previous_menus_open = current_menus_open
+			previous_quest_end = current_quest_end
+			delay_timer = 0
+		end
+	elseif current_menus_open and not previous_menus_open then
+		delay_timer = delay_timer + dt
+		if delay_timer >= menu_o_delay then
+			previous_menus_open = current_menus_open
+			delay_timer = 0
+		end
+	else
+		previous_menus_open = current_menus_open
+		previous_quest_end = current_quest_end
+	end
+	
+	if previous_quest_end or previous_menus_open or first_visit then
+		return true
+	end
+	return false
+end
+
+local function is_in_tent()
+	local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
+	local in_tent = character:call("get_IsInAllTent")
+	return in_tent
+end
+
+local function get_fade()
+	local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
+	local current_hidden = fade_manager:call("get_IsVisibleStateAny")
+	local current_fading = fade_manager:call("get_IsFadingAny")
+	
+	
+	if current_fading and not previous_fading then
+		delay_timer = delay_timer + dt
+		if delay_timer >= out_delay then
+			fade_value = math.max(fade_value - out_speed * dt, 0)
+			if fade_value == 0 then
+				previous_fading = current_fading
+				delay_timer = 0
+			end
+		end
+	else
+		previous_fading = current_fading
+	end
+	
+	if previous_hidden and not current_hidden then
+		delay_timer = delay_timer + dt
+		if delay_timer >= in_delay then
+			fade_value = math.min(fade_value + in_speed * dt, 1)
+			if fade_value == 1 then
+				previous_hidden = current_hidden
+				delay_timer = 0
+			end
+		end
+	else
+		previous_hidden = current_hidden
+	end
+	
+	if not current_fading and not previous_hidden then
+		fade_value = 1
+	end
+	
+	if current_hidden then
+		fade_value = 0
+	end
 end
 
 -- Update timer
@@ -143,8 +361,10 @@ local function get_timer_msg(timer_index)
     return "ERR"
 end
 
-local function get_count_msg(facility)
-    
+local function get_box_msg(box)
+	local count = config.box_datas[box].count
+	local size = config.box_datas[box].size
+	return string.format("%s: %d/%d", box, count, size)
 end
 
 local function is_box_full(facility)
@@ -158,21 +378,16 @@ end
 
 local function get_ration_state()
 	if not dining then return end
-    ration_timer = get_timer(0)
-    config.box_datas.ration.count = dining:getSuppliableFoodNum()
-    config.box_datas.ration.full = dining:isSuppliableFoodMax()
-    supply_timer_active = dining:supplyTimerContinuation()
-    if config.box_datas.ration.count > config.box_datas.ration.size then
-        config.box_datas.ration.size = config.box_datas.ration.count
+    local timer = get_timer(0)
+    config.box_datas.Rations.count = dining:getSuppliableFoodNum()
+    config.box_datas.Rations.full = dining:isSuppliableFoodMax()
+	if timer > config.box_datas.Rations.timer then
+		config.box_datas.Rations.timer = timer
+	end
+    if config.box_datas.Rations.count > config.box_datas.Rations.size then
+        config.box_datas.Rations.size = config.box_datas.Rations.count
     end
     save_config()
-end
-
-local function get_ration_message()
-    -- if config.box_datas.ration.full then
-        -- return "Rations: Full!"
-    -- end
-    return "Rations: " .. config.box_datas.ration.count .. "/" .. config.box_datas.ration.size
 end
 
 -- === Support Ship ===
@@ -228,27 +443,27 @@ local function get_shares_state()
     if not workshop then return end
     local reward_items = workshop:call("getRewardItems")
     if not reward_items then return end
-    config.box_datas.shares.count = reward_items:get_field("_size") or 0
-    config.box_datas.shares.full = workshop:call("isFullRewardItems")
-    config.box_datas.shares.ready = workshop:call("canReceiveRewardItems")
+    config.box_datas.Shares.count = reward_items:get_field("_size") or 0
+    config.box_datas.Shares.full = workshop:call("isFullRewardItems")
+    config.box_datas.Shares.ready = workshop:call("canReceiveRewardItems")
 
-    if config.box_datas.shares.count > config.box_datas.shares.size then
-        config.box_datas.shares.size = config.box_datas.shares.count
+    if config.box_datas.Shares.count > config.box_datas.Shares.size then
+        config.box_datas.Shares.size = config.box_datas.Shares.count
     end
     save_config()
 end
 
 local function get_shares_message()
-    if config.box_datas.shares.count == 0 then
-        return config.box_datas.shares.full and "Shares error!" or "No Festival Shares"
+    if config.box_datas.Shares.count == 0 then
+        return config.box_datas.Shares.full and "Shares error!" or "No Festival Shares"
     end
-	if config.box_datas.shares.full then
+	if config.box_datas.Shares.full then
         return "Shares: Full!"
     end
-	if not config.box_datas.shares.ready then
+	if not config.box_datas.Shares.ready then
         return "Unavailable!"
     end
-    return string.format("Shares: %d/%d ", config.box_datas.shares.count, config.box_datas.shares.size)
+    return string.format("Shares: %d/%d ", config.box_datas.Shares.count, config.box_datas.Shares.size)
 end
 
 -- === Material Retrieval ===
@@ -346,37 +561,21 @@ sdk.hook(
     nil
 )
 
-local function get_npc_message(npc_name)
-    local npc_count = config.box_datas[npc_name].count
-    if not npc_count then
-        print(string.format("Debug: No count available for NPC '%s'!", npc_name))
-        return string.format("%s: ERR", npc_name)
-    end
-
-    local npc_size = config.box_datas[npc_name].size
-    if not npc_size then
-        print(string.format("Debug: No size available for NPC '%s'!", npc_name))
-        return string.format("%s: ERR", npc_name)
-    end
-
-    -- if npc_count == npc_size then
-        -- return string.format("%s: Full!", npc_name)
-    -- end
-    return string.format("%s: %d/%d", npc_name, npc_count, npc_size)
-end
-
 -- === Bird Nest ===
 
 local function get_nest_state()
     local current_nest_time = get_timer(11)
     if current_nest_time then
         if previous_nest_time < 1 and current_nest_time > 1199 then
-            config.box_datas.nest.count = config.box_datas.nest.count + 1
+            config.box_datas.Nest.count = config.box_datas.Nest.count + 1
 		end
-        if config.box_datas.nest.count > config.box_datas.nest.size then
-            config.box_datas.nest.size = config.box_datas.nest.count
+		if current_nest_time > config.box_datas.Nest.timer then
+			config.box_datas.Nest.timer = current_nest_time
+		end
+        if config.box_datas.Nest.count > config.box_datas.Nest.size then
+            config.box_datas.Nest.size = config.box_datas.Nest.count
         end
-		config.box_datas.nest.full = config.box_datas.nest.count == config.box_datas.nest.size
+		config.box_datas.Nest.full = config.box_datas.Nest.count == config.box_datas.Nest.size
         previous_nest_time = current_nest_time
     end
     save_config()
@@ -386,23 +585,19 @@ end
 sdk.hook(
     sdk.find_type_definition("app.Gm262"):get_method("successButtonEvent"),
     function(args)
-        config.box_datas.nest.count = 0
+        config.box_datas.Nest.count = 0
         save_config()
     end,
     nil
 )
 
-local function get_nest_message()
-    -- if config.box_datas.nest.count == config.box_datas.nest.size then
-        -- return "Full!"
-    -- end
-    return "Nest: " .. config.box_datas.nest.count .. "/" .. config.box_datas.nest.size
-end
-
 -- === Poogie ===
 
 local function get_pugee_state()
 	local timer = get_timer(tidx.pugee)
+	if timer > config.box_datas.pugee.timer then
+		config.box_datas.pugee.timer = timer
+	end
 	config.box_datas.pugee.full = timer < 0
 	save_config()
 end
@@ -416,17 +611,7 @@ local function get_moon_idx()
 	return moon_idx
 end
 
-local function get_moon_folder()
-    if config.moons_txt == true then
-        return "numerals"
-    else
-        config.moons = true
-		save_config()
-        return "default"
-    end
-end
-
--- === Helper functions ===
+-- === Draw helper functions ===
 
 local function apply_opacity(argb, opacity)
     local a     = (argb >> 24) & 0xFF
@@ -444,6 +629,8 @@ local function measureElements(font, elements, gap, scale_elements)
             elem.measured_width = text_font:measure(elem.value)
         elseif elem.type == "icon" then
 			elem.measured_width = scale_elements and (elem.width * table_scale) or elem.width
+		elseif elem.type == "bar" then
+			elem.measured_width = 0 - gap
         elseif elem.type == "timer" then
             elem.width = timer_font:measure(elem.value)
             elem.measured_width = 0 - gap
@@ -472,21 +659,32 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
             d2d.text(text_font, elem.value, xPos, y, apply_opacity(color.text, alpha))
             xPos = xPos + elem.measured_width + gap
         elseif elem.type == "icon" then
-			local drawY = scale_elements and (icon_y + (elem.height - (elem.height + margin) * table_scale) / 2) or icon_y
             local drawW = scale_elements and (elem.width * table_scale) or elem.width
-            local drawH = scale_elements and (elem.height * table_scale) or elem.height
-            d2d.image(elem.value, xPos, drawY, drawW, drawH, alpha)
+            d2d.image(elem.value, xPos, icon_y, drawW, icon_d, alpha)
 			if elem.flag and config.draw_flags then
 				local flagX = xPos - drawW / 2 + margin * 1.5
-				local flagY = drawY - drawH / 2 + margin * 1.2
-				d2d.image(img.flag, flagX, flagY, drawW, drawH, alpha)
+				local flagY = is_in_tent() and icon_y - margin * 2.1 or icon_y - icon_d / 2 + margin * 1.2
+				d2d.image(img.flag, flagX, flagY, drawW, icon_d, alpha)
 			end
             xPos = xPos + elem.measured_width + gap
+		elseif elem.type == "bar" and config.draw_bars then
+			local progress = 1 - math.max(0, math.min(1, elem.value / elem.max))
+			local bar_w = icon_d * 0.75
+			local bar_h = icon_d / 25
+			local bar_x = xPos - gap - icon_d + (icon_d - bar_w) / 2
+			local bar_y = is_in_tent() and y + bar_h * 2 or y + icon_d - bar_h * 0.75
+			local fill_w = bar_w * progress
+			d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, apply_opacity(color.background, alpha))
+			if elem.flag then
+				d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, apply_opacity(color.full_bar, alpha))
+			else
+				d2d.fill_rect(bar_x, bar_y, fill_w, bar_h, apply_opacity(color.prog_bar, alpha))
+			end
         elseif elem.type == "timer" and config.draw_timers then
             local timer_x = xPos - icon_d - margin * 3
             local timer_char_h = ref_char_h * timer_scale
             local timer_y = y + ref_char_h - timer_char_h - margin / 4
-            local timer_bg_y = timer_y + margin * 4/5
+            local timer_bg_y = timer_y + margin * 0.8
             local timer_bg_w = elem.width
             local timer_bg_h = timer_char_h - margin
             d2d.fill_rect(timer_x, timer_bg_y, timer_bg_w, timer_bg_h, apply_opacity(color.background, alpha))
@@ -500,7 +698,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
             }
             local table_y      = y + (ref_char_h - ref_char_h * table_scale) / 2
 			local table_icon_d = icon_d * table_scale
-            local table_icon_y = icon_y + (icon_d - table_icon_d) / 2
+            local table_icon_y = icon_y + (icon_d - table_icon_d) * 5/8
             local table_gap    = gap * table_scale
             xPos = drawElements(table_font, elem.value, xPos, table_y, table_icon_d, table_icon_y, table_gap, margin, color, alpha, true)
         end
@@ -514,16 +712,37 @@ end
 
 re.on_frame(
     function()
-        if not timers or timers:get_field("_size") == 0 then
+        if not is_active_player() then
             first_run = true
+			previous_hidden = true
+			previous_fading = true
             previous_nest_time = 1200
-            config.box_datas.nest.count = 0
+            config.box_datas.Nest.count = 0
 			nest_timer_reset = false
 			nest_state_reset = false
+			previous_stage = -1
+			previous_life_area = false
+			previous_base_camp = false
+			config.visited = {
+				plains   = { field = false, life_area = false, base_camp = false },
+				forest   = { field = false, life_area = false, base_camp = false },
+				basin    = { field = false, life_area = false, base_camp = false },
+				cliffs   = { field = false, base_camp = false },
+				ruins    = { field = false, life_area = false, base_camp = false },
+				arena    = { field = false },
+				suja     = { field = true,  life_area = false },
+				g_hub    = { base_camp = false },
+				training = { field = false }
+			}
             save_config()
             return
         end
 		
+		stage_id = environment_manager and environment_manager:get_field("_CurrentStage")
+		
+		if config.hide_w_hud then get_fade() else fade_value = 1 end
+		
+		get_first_visit()
         get_ration_state()
         get_ship_state()
         get_shares_state()
@@ -551,8 +770,8 @@ d2d.register(
         color.timer_text    = 0xFFFCFFA6    -- Light Yellow
 		color.yellow_text   = 0xFFF4DB8A    -- Yellow
         color.red_text      = 0xFFFF0000    -- Red
-        color.progress_bar  = 0xFF00FF00    -- Green
-        color.full_progress = 0xFFFF3300    -- Red-orange
+        color.prog_bar      = 0xFF00FF00    -- Green
+        color.full_bar      = 0xFFE6B00B    -- Orange-yellow
         color.border        = 0xFFAD9D75    -- Tan
     
         img.border_left    = d2d.Image.new("facility_tracker/border_left.png")
@@ -577,11 +796,24 @@ d2d.register(
         img.azuz 	 	   = d2d.Image.new("facility_tracker/azuz.png")
         img.suja 	 	   = d2d.Image.new("facility_tracker/suja.png")
         img.sild 	 	   = d2d.Image.new("facility_tracker/sild.png")
+		img.m_ring         = d2d.Image.new("moon_tracker/ring.png")
+		img.moon_0         = d2d.Image.new("moon_tracker/moon_0.png")
+		img.moon_1         = d2d.Image.new("moon_tracker/moon_1.png")
+		img.moon_2         = d2d.Image.new("moon_tracker/moon_2.png")
+		img.moon_3         = d2d.Image.new("moon_tracker/moon_3.png")
+		img.moon_4         = d2d.Image.new("moon_tracker/moon_4.png")
+		img.moon_5         = d2d.Image.new("moon_tracker/moon_5.png")
+		img.moon_6         = d2d.Image.new("moon_tracker/moon_6.png")
+		img.m_num_0        = d2d.Image.new("moon_tracker/num_0.png")
+		img.m_num_1        = d2d.Image.new("moon_tracker/num_1.png")
+		img.m_num_2        = d2d.Image.new("moon_tracker/num_2.png")
+		img.m_num_3        = d2d.Image.new("moon_tracker/num_3.png")
+		img.m_num_4        = d2d.Image.new("moon_tracker/num_4.png")
+		img.m_num_5        = d2d.Image.new("moon_tracker/num_5.png")
+		img.m_num_6        = d2d.Image.new("moon_tracker/num_6.png")
     end,
     function()
-        if not timers or timers:get_field("_size") == 0 then
-            return
-        end
+        if not is_active_player() then return end
     
         local screen_w, screen_h = d2d.surface_size()
         local screen_scale       = screen_h / 2160.0
@@ -593,14 +825,15 @@ d2d.register(
         -- Ship/Trades Ticker
         -------------------------------------------------------------------
 
-        local ti_user_scale  = config.ti_user_scale
+        local ti_opacity     = config.ti_opacity * fade_value
+		local ti_user_scale  = config.ti_user_scale
         local ti_eff_scale   = screen_scale * ti_user_scale
         local ti_margin      = base_margin * ti_eff_scale
         local ti_bg_height   = 28 * ti_eff_scale
         local ti_icon_d      = ti_bg_height * 1.1
         local ti_speed_scale = config.ti_speed_scale * ti_eff_scale
         local ticker_speed   = 90 * ti_speed_scale
-		local ti_bg_color    = apply_opacity(color.background, config.ti_opacity)
+		local ti_bg_color    = apply_opacity(color.background, ti_opacity)
 		local ticker_gap     = 10 * ti_eff_scale
 		local ti_ex_gap      = ticker_gap
         local ti_bg_y        = 0
@@ -614,33 +847,33 @@ d2d.register(
         }
         
         local ship_elements = {
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
 			{ type = "text",  value = "This is a scrolling ticker message." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "This will eventually display support ship items available once I find them." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "This is placeholder text for ship items." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d }
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d }
         }
 
         local trades_elements = {
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "The text just keeps on scrolling!" },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "Ideally, this will also list available trades, but those have been rather elusive." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "Just placeholder text for now." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d }
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d }
         }
         
         local ticker_elements = {
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "Here's a ticker." },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
 			{ type = "table", value = ship_elements   },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "table", value = trades_elements },
-            { type = "icon",  value = img.ph_icon, width = ti_icon_d, height = ti_icon_d },
+            { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "And we loop around again." }
         }
         
@@ -665,15 +898,16 @@ d2d.register(
         -- Factilities Tracker
         -------------------------------------------------------------------
 
-        local tr_user_scale = config.tr_user_scale
-        local tr_eff_scale  = screen_scale * tr_user_scale
+        local tr_opacity    = config.tr_opacity * fade_value
+		local tr_user_scale = config.tr_user_scale
+        local tr_eff_scale  = is_in_tent() and screen_scale * tr_user_scale * tent_ui_scale or screen_scale * tr_user_scale
         local tr_margin     = base_margin * tr_eff_scale
         local tr_bg_height  = 50 * tr_eff_scale
-        local tr_bg_y       = screen_h - tr_bg_height
-        local tr_bg_color   = apply_opacity(color.background, config.tr_opacity)
+        local tr_bg_y       = is_in_tent() and 0 or screen_h - tr_bg_height
+        local tr_bg_color   = apply_opacity(color.background, tr_opacity)
         local tr_icon_d     = tr_bg_height * 1.1
 		local tracker_gap   = 18 * tr_eff_scale
-		local tr_icon_y     = tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2
+		local tr_icon_y     = is_in_tent() and tr_bg_y + (tr_bg_height - tr_icon_d) / 2 or tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2
         local tr_font_size  = math.floor(tr_bg_height - tr_margin * 2)
         local tracker_font  = {
             name   = "Segoe UI",
@@ -682,42 +916,45 @@ d2d.register(
             italic = false
         }
         local retrieval_elements = {
-            { type = "icon",  value = img.sild, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Rysher")      },
-            { type = "text",  value = get_npc_message("Rysher")    },
-            { type = "icon",  value = img.kunafa, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Murtabak")    },
-            { type = "text",  value = get_npc_message("Murtabak")  },
-            { type = "icon",  value = img.suja, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Apar")      },
-            { type = "text",  value = get_npc_message("Apar")      },
-            { type = "icon",  value = img.wudwuds, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Plumpeach")   },
-            { type = "text",  value = get_npc_message("Plumpeach") },
-            { type = "icon",  value = img.azuz, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("Sabar")      },
-            { type = "text",  value = get_npc_message("Sabar")     }
+            { type = "icon",  value = img.sild, width = tr_icon_d, flag = is_box_full("Rysher")      },
+            { type = "text",  value = get_box_msg("Rysher")    },
+            { type = "icon",  value = img.kunafa, width = tr_icon_d, flag = is_box_full("Murtabak")    },
+            { type = "text",  value = get_box_msg("Murtabak")  },
+            { type = "icon",  value = img.suja, width = tr_icon_d, flag = is_box_full("Apar")      },
+            { type = "text",  value = get_box_msg("Apar")      },
+            { type = "icon",  value = img.wudwuds, width = tr_icon_d, flag = is_box_full("Plumpeach")   },
+            { type = "text",  value = get_box_msg("Plumpeach") },
+            { type = "icon",  value = img.azuz, width = tr_icon_d, flag = is_box_full("Sabar")      },
+            { type = "text",  value = get_box_msg("Sabar")     }
         }
         
         local tracker_elements = {
-            { type = "icon",  value = img.ship, width = tr_icon_d, height = tr_icon_d, flag = leaving      },
+            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving      },
 			{ type = "text",  value = get_ship_message()         },
-            { type = "icon",  value = img.ship, width = tr_icon_d, height = tr_icon_d, flag = leaving      },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
-            { type = "icon",  value = img.rations, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("ration")   },
+            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving      },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
+            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations")   },
+			{ type = "bar",   value = get_timer(tidx.ration), max = config.box_datas.Rations.timer, flag = is_box_full("Rations") },
             { type = "timer", value = get_timer_msg(tidx.ration) },
-			{ type = "text",  value = get_ration_message()       },
-            { type = "icon",  value = img.rations, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("ration")   },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
-            { type = "icon",  value = img.retrieval, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("retrieval") },
+			{ type = "text",  value = get_box_msg("Rations")       },
+            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations")   },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
+            { type = "icon",  value = img.retrieval, width = tr_icon_d, flag = is_box_full("retrieval") },
             { type = "table", value = retrieval_elements         },
-            { type = "icon",  value = img.retrieval, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("retrieval") },
-            { type = "icon",  value = img.spacer_l , width = tr_icon_d, height = tr_icon_d },
-            { type = "icon",  value = img.workshop, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("shares")  },
-            { type = "text",  value = get_shares_message()       },
-            { type = "icon",  value = img.workshop, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("shares")  },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
-            { type = "icon",  value = img.nest, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("nest")      },
+            { type = "icon",  value = img.retrieval, width = tr_icon_d, flag = is_box_full("retrieval") },
+            { type = "icon",  value = img.spacer_l , width = tr_icon_d },
+            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares")  },
+            { type = "text",  value = get_box_msg("Shares")       },
+            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares")  },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
+            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest")      },
+			{ type = "bar",   value = get_timer(tidx.nest), max = config.box_datas.Nest.timer, flag = is_box_full("Nest") },
             { type = "timer", value = get_timer_msg(tidx.nest)   },
-            { type = "text",  value = get_nest_message()         },
-            { type = "icon",  value = img.nest, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("nest")      },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d, height = tr_icon_d  },
-            { type = "icon",  value = img.pugee, width = tr_icon_d, height = tr_icon_d, flag = is_box_full("pugee")     },
+            { type = "text",  value = get_box_msg("Nest")         },
+            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest")      },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
+            { type = "icon",  value = img.pugee, width = tr_icon_d, flag = is_box_full("pugee")     },
+			{ type = "bar",   value = get_timer(tidx.pugee), max = config.box_datas.pugee.timer, flag = is_box_full("pugee") },
             { type = "timer", value = get_timer_msg(tidx.pugee)  }
         }
         
@@ -726,45 +963,63 @@ d2d.register(
 		
         local tr_ref_font = d2d.Font.new(tracker_font.name, tracker_font.size, tracker_font.bold, tracker_font.italic)
         local _, ref_char_height = tr_ref_font:measure("A")
-        local tracker_txt_y = screen_h - ref_char_height
+        local tracker_txt_y = tr_bg_y + tr_bg_height - ref_char_height
         
         local tr_border_h      = base_border_h * tr_eff_scale
         local tr_end_border_w  = base_end_border_w * tr_eff_scale
-        local tr_border_y      = tr_bg_y - (tr_border_h / 2)
+        local tr_border_y      = is_in_tent() and tr_bg_height - (tr_border_h / 2) or tr_bg_y - (tr_border_h / 2)
         local tr_sect_border_x = tr_end_border_w - (tr_margin / 2)
         local tr_sect_border_w = screen_w - tr_end_border_w - tr_sect_border_x + tr_margin
+		
+		-------------------------------------------------------------------
+		-- Moon Tracker
+		-------------------------------------------------------------------
+		
+		local moon   = img["moon_" .. tostring(get_moon_idx())]
+		local m_num  = img["m_num_" .. tostring(get_moon_idx())]
+		local moon_x = 4 * screen_scale
+		local moon_y = 1922 * screen_scale
+		local moon_w = 140 * screen_scale
+		local moon_h = 140 * screen_scale
 
         -------------------------------------------------------------------
         -- DRAWS
         -------------------------------------------------------------------
-
-        -- Draw the ticker
-        if config.draw_ticker then
-            d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
-            d2d.image(img.border_left, 0, ti_border_y, ti_end_border_w, ti_border_h, config.ti_opacity)
-            d2d.image(img.border_right, screen_w - ti_end_border_w, ti_border_y, ti_end_border_w, ti_border_h, config.ti_opacity)
-            if ti_sect_border_w > 0 then
-                d2d.image(img.border_section, ti_sect_border_x, ti_border_y, ti_sect_border_w, ti_border_h, config.ti_opacity)
-            end
-            while current_x < screen_w do
-                drawElements(ticker_font, ticker_elements, current_x, ticker_txt_y, ti_icon_d, ti_icon_y, ticker_gap, ti_margin, color, config.ti_opacity)
-                current_x = current_x + totalTickerWidth
-            end
-        end
-
-        -- Draw the tracker
-        d2d.fill_rect(0, tr_bg_y, screen_w, tr_bg_height, tr_bg_color)
-        d2d.image(img.border_left, 0, tr_border_y, tr_end_border_w, tr_border_h, config.tr_opacity)
-        d2d.image(img.border_right, screen_w - tr_end_border_w, tr_border_y, tr_end_border_w, tr_border_h, config.tr_opacity)
-        if tr_sect_border_w > 0 then
-            d2d.image(img.border_section, tr_sect_border_x, tr_border_y, tr_sect_border_w, tr_border_h, config.tr_opacity)
-        end
-        drawElements(tracker_font, tracker_elements, tracker_start_x, tracker_txt_y, tr_icon_d, tr_icon_y, tracker_gap, tr_margin, color, config.tr_opacity)
+		
+		if not config.hide_w_hud or (not is_hud_hidden() and not is_in_tent()) or (config.draw_in_tent and is_in_tent()) then
+			-- Draw the ticker
+			if config.draw_ticker then
+				d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
+				d2d.image(img.border_left, 0, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
+				d2d.image(img.border_right, screen_w - ti_end_border_w, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
+				if ti_sect_border_w > 0 then
+					d2d.image(img.border_section, ti_sect_border_x, ti_border_y, ti_sect_border_w, ti_border_h, ti_opacity)
+				end
+				while current_x < screen_w do
+					drawElements(ticker_font, ticker_elements, current_x, ticker_txt_y, ti_icon_d, ti_icon_y, ticker_gap, ti_margin, color, ti_opacity)
+					current_x = current_x + totalTickerWidth
+				end
+			end
+			
+			-- Draw the tracker
+			if config.draw_tracker then
+				d2d.fill_rect(0, tr_bg_y, screen_w, tr_bg_height, tr_bg_color)
+				d2d.image(img.border_left, 0, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
+				d2d.image(img.border_right, screen_w - tr_end_border_w, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
+				if tr_sect_border_w > 0 then
+					d2d.image(img.border_section, tr_sect_border_x, tr_border_y, tr_sect_border_w, tr_border_h, tr_opacity)
+				end
+				drawElements(tracker_font, tracker_elements, tracker_start_x, tracker_txt_y, tr_icon_d, tr_icon_y, tracker_gap, tr_margin, color, tr_opacity)
+			end
+		end
 		
 		-- Draw the moon
-		if config.draw_moon then
-			local moon_image = d2d.Image.new("moon_tracker/" .. get_moon_folder() .. "/phase_" .. get_moon_idx() .. ".png")
-            d2d.image(moon_image, 4 * screen_scale, 1922 * screen_scale, 140 * screen_scale, 140 * screen_scale, 1.0)
+		if config.draw_moon and (not config.hide_mw_hud or (not is_in_tent() and not is_hud_hidden() and stage_id ~= stage_idx.training)) then
+			d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, fade_value)
+            d2d.image(moon, moon_x, moon_y, moon_w, moon_h, fade_value)
+			if config.draw_m_num then
+				d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, fade_value)
+			end
 		end
     end
 )
@@ -778,24 +1033,11 @@ re.on_draw_ui(function()
         if changed_tr_opacity then config.tr_opacity = newVal2; save_config() end
         
         local checkboxes = {
-            { "Display Timers", "draw_timers" },
-			{ "Display Flags", "draw_flags" }
-        }
-        for _, cb in ipairs(checkboxes) do
-            local label, key = cb[1], cb[2]
-            local changedBox, newVal = imgui.checkbox(label, config[key])
-            if changedBox then
-                config[key] = newVal
-                save_config()
-            end
-        end
-
-        imgui.tree_pop()
-    end
-	
-	if imgui.tree_node("Moon Phase Tracker") then
-        local checkboxes = {
-            { "Display Moon Phase", "draw_moon" }
+            { "Display Tracker", "draw_tracker" },
+			{ "Progress Bars",   "draw_bars"    },
+			{ "Timers",          "draw_timers"  },
+			{ "Flags",           "draw_flags"   },
+			{ "Hide with HUD",   "hide_w_hud"   }
         }
         for _, cb in ipairs(checkboxes) do
             local label, key = cb[1], cb[2]
@@ -806,18 +1048,28 @@ re.on_draw_ui(function()
             end
         end
 		
-		local img_checkboxes = {
-			{ "Native Style",       "moons"     },
-            { "With Numerals",      "moons_txt" }
+		if config.hide_w_hud then
+			local changedBox, newVal = imgui.checkbox("Show in tent", config.draw_in_tent)
+			if changedBox then
+				config.draw_in_tent = newVal
+				save_config()
+			end
+		end
+		
+        imgui.tree_pop()
+    end
+	
+	if imgui.tree_node("Moon Phase Tracker") then
+        local checkboxes = {
+            { "Display Moon Phase", "draw_moon"   },
+			{ "Display Numerals",   "draw_m_num"  },
+			{ "Hide with HUD",      "hide_mw_hud" }
         }
-        for _, cb in ipairs(img_checkboxes) do
+        for _, cb in ipairs(checkboxes) do
             local label, key = cb[1], cb[2]
-            local changedBox, newValue = imgui.checkbox(label, config[key])
-            if changedBox and newValue then
-                for _, inner_cb in ipairs(img_checkboxes) do
-                    config[inner_cb[2]] = false
-                end
-                config[key] = true
+            local changedBox, newVal = imgui.checkbox(label, config[key])
+            if changedBox then
+                config[key] = newVal
                 save_config()
             end
         end
