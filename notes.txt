@@ -1,3 +1,7 @@
+adjust delay for minimap detection
+hide moon & option to hide tracker at table/arm wrestle
+check fishing, portable bbq, barrel bowling, binoculars
+
 hotkey toggle
 reposition moon in rest menu
 hide in quest
@@ -20,6 +24,62 @@ shares flag on items available
 	- hides when menu open (including tent)
 	- hides when fast travel/loading screen
 	- hides in training area
+
+
+
+
+
+MAP
+closed:
+	previous_rad_visible, current_rad_visible, previous_can_open, current_can_open
+opening:
+	not current_can_open (opening)
+	not previous_can_open (UI hidden)
+	not current_rad_visible, not previous_rad_visible (open)
+open:
+	not previous_rad_visible, not current_rad_visible, not previous_can_open, not current_can_open
+closing:
+	current_rad_visible (closing)
+	previous_rad_visible (UI shown)
+	current_can_open, previous_can_open (closed)
+closed:
+	previous_rad_visible, current_rad_visible, previous_can_open, current_can_open	
+
+MENU
+closed:
+	previous_rad_visible, current_rad_visible, previous_can_open, current_can_open
+opening:
+	not current_rad_visible, not current_can_open (opening)
+	not previous_rad_visible (UI hidden)
+	current_can_open (open)
+open:
+	not previous_rad_visible, not current_rad_visible, previous_can_open, current_can_open
+closing:
+	current_rad_visible, not current_can_open (closing)
+	previous_rad_visible (UI shown)
+	current_can_open (closed)
+closed:
+	previous_rad_visible, current_rad_visible, previous_can_open, current_can_open
+
+
+When neither the menu nor the map is open, current_rad_visible is true and current_can_open is true.
+When the menu is being opened, current_rad_visible becomes false and current_can_open becomes false.
+After a delay (menu_o_delay), the HUD becomes hidden.
+Once the menu has finished opening, current_can_open becomes true.
+When the menu is being closed, current_rad_visible becomes true and current_can_open becomes false.
+After a delay (menu_i_delay), the HUD becomes shown.
+Once the menu has finished closing, current_can_open becomes true.
+When the map is being opened, only current_can_open becomes false.
+After a delay (map_o_delay), the HUD becomes hidden.
+Once the map has finished opening, current_rad_visible becomes false.
+When the map is being closed, only current_rad_visible becomes true.
+After a delay (map_i_delay), the HUD becomes shown.
+Once the map has finished closing, current_can_open becomes true.
+
+I would like a function is_hud_hidden() that returns true whenever the HUD is currently hidden.
+
+
+
 
 0 - plains
 1 - forest
@@ -55,43 +115,6 @@ arena
 grand hub (base camp)
 training
 
-
-I want a function get_first_visit() that I can call on frame that does the following:
- - get the _CurrentStage field of environment_manager ('current_stage')
- - get the <Character>k__BackingField field I've gotten elsewhere in the script ('character')
- - call get_IsInLifeArea on the character field ('current_life_area')
- - call get_IsInBaseCamp on the character field ('current_base_camp')
- - if the stage or life area or base camp change (previous_stage ~= current_stage, etc), do the following:
- - get the current stage name ('stage') by checking the values in stage_idx against current_stage and returning the corresponding key
- - if the current stage name corresponds to an entry in the 'visited' table, do the following:
- - if current_base_camp and not visited[stage].base_camp, do the following:
- - start a delay_timer
- - once delay_timer >= visit_o_delay, do the following:
- - set first_visit to true
- - reset delay_timer
- - start a new delay_timer
- - once delay_timer >= visit_i_delay, do the following:
- - set previous_stage to current_stage
- - set previous_life_area to current_life_area
- - set previous_base_camp to current_base_camp
- - set visited[stage].base_camp to true
- - set first_visit to false
- - reset delay_timer
- - do the same as above, swapping out visited[stage].base_camp appropriately, for:
- - if current_life_area and not current_base_camp and not visited[stage].life_area
- - if not current_life_area and not current_base_camp and not visited[stage].field
-
-I will initialize previous_stage, previous_life_area, previous_base_camp, visit_o_delay, visit_i_delay, and first_visit earlier in the script
-
-
-
-in on_frame if not is_active_player, set visible
-
-if stage, life area, or base camp change then
-	check stage_idx values for 
-	
-	
-	set first_visit to true
 	
 	
 

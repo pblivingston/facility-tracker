@@ -1,11 +1,12 @@
 local json = json
 
 local captured_args        = nil
+local character            = nil
+local is_in_tent           = false
 local previous_hidden      = false
 local previous_fading      = false
-local previous_quest_end   = false
-local previous_menus_open  = false
-local previous_quest_menu  = false
+local previous_rad_visible = false
+local previous_can_open    = false
 local fade_value           = 0
 local delay_timer          = 0
 local delay_2_timer        = 0
@@ -13,11 +14,10 @@ local in_delay             = 0.15
 local in_speed             = 1
 local out_delay            = 0
 local out_speed            = 2.5
-local menu_o_delay         = 0.06
-local menu_i_delay         = 0.7
-local visit_o_delay        = 0.35
-local visit_i_delay        = 4.29
-local visit_fade_th        = 0.3
+local map_o_delay          = 0.42
+local map_i_delay          = 0
+local menu_o_delay         = 0.28
+local menu_i_delay         = 0
 local previous_timer_value = {}
 local tidx                 = {
     ration  = 0,
@@ -25,11 +25,6 @@ local tidx                 = {
     nest    = 11
 }
 
-local stage = nil
-local previous_stage = -1
-local previous_life_area = false
-local previous_base_camp = false
-local first_visit = false
 local stage_id  = -1
 local stage_idx = {
 	plains   = 0,
@@ -108,17 +103,6 @@ local config = {
 		Apar      = { count = 0, size = 16 },
 		Plumpeach = { count = 0, size = 16 },
 		Sabar     = { count = 0, size = 16 }
-	},
-	visited = {
-		plains   = { field = false, life_area = false, base_camp = false },
-		forest   = { field = false, life_area = false, base_camp = false },
-		basin    = { field = false, life_area = false, base_camp = false },
-		cliffs   = { field = false, base_camp = false },
-		ruins    = { field = false, life_area = false, base_camp = false },
-		arena    = { field = false },
-		suja     = { field = true,  life_area = false },
-		g_hub    = { base_camp = false },
-		training = { field = false }
 	}
 }
 
@@ -152,6 +136,8 @@ local dining              = facility_manager:get_field("<Dining>k__BackingField"
 local ship                = facility_manager:get_field("<Ship>k__BackingField")
 local workshop            = facility_manager:get_field("<LargeWorkshop>k__BackingField")
 local retrieval           = facility_manager:get_field("<Collection>k__BackingField")
+local map_controller      = gui_manager:get_field("<MAP3D>k__BackingField")
+
 
 local function capture_args(args)
     captured_args = args
@@ -165,121 +151,49 @@ local function is_active_player()
 	if not info_success or not info then
 		return false
 	end
-	local character_success, character = pcall(function() return info:get_field("<Character>k__BackingField") end)
-	if not character_success or not character then
+	local character_success, character_result = pcall(function() return info:get_field("<Character>k__BackingField") end)
+	if not character_success or not character_result then
 		return false
 	end
+	character = character_result
 	return true
 end
 
-local function get_first_visit()
-    local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
-    local current_life_area = character:call("get_IsInLifeArea")
-    local current_base_camp = character:call("get_IsInBaseCamp")
-	local riding            = character:call("get_IsPorterRiding")
-	local fast_travel       = mission_manager:call("isFastTravel")
-    
-    if not fast_travel and fade_value >= visit_fade_th and (previous_stage ~= stage_id or previous_life_area ~= current_life_area or previous_base_camp ~= current_base_camp) then
-        for key, value in pairs(stage_idx) do
-            if value == stage_id then
-                stage = key
-                break
-            end
-        end
-		
-        if not stage or not config.visited[stage] then return end
-
-        if current_base_camp and not config.visited[stage].base_camp then
-            delay_timer = delay_timer + dt
-            if delay_timer >= visit_o_delay then
-                first_visit = true
-                delay_2_timer = delay_2_timer + dt
-                if delay_2_timer >= visit_i_delay then
-                    previous_stage = stage_id
-                    previous_life_area = current_life_area
-                    previous_base_camp = current_base_camp
-                    config.visited[stage].base_camp = true
-                    first_visit = false
-					delay_2_timer = 0
-                    delay_timer = 0
-                end
-            end
-		elseif current_life_area and not current_base_camp and not config.visited[stage].life_area then
-            delay_timer = delay_timer + dt
-            if delay_timer >= visit_o_delay then
-                first_visit = true
-                delay_2_timer = delay_2_timer + dt
-                if delay_2_timer >= visit_i_delay then
-                    previous_stage = stage_id
-                    previous_life_area = current_life_area
-                    previous_base_camp = current_base_camp
-                    config.visited[stage].life_area = true
-                    first_visit = false
-					delay_2_timer = 0
-                    delay_timer = 0
-                end
-            end
-        elseif not current_life_area and not current_base_camp and not config.visited[stage].field then
-            delay_timer = delay_timer + dt
-            if delay_timer >= visit_o_delay then
-                first_visit = true
-                delay_2_timer = delay_2_timer + dt
-                if delay_2_timer >= visit_i_delay then
-                    previous_stage = stage_id
-                    previous_life_area = current_life_area
-                    previous_base_camp = current_base_camp
-                    config.visited[stage].field = true
-                    first_visit = false
-					delay_2_timer = 0
-                    delay_timer = 0
-                end
-            end
-        else
-			previous_stage = stage_id
-			previous_base_camp = current_base_camp
-			previous_life_area = current_life_area
-		end
-	end
-end
-
 local function is_hud_hidden()
-	local current_quest_end = mission_manager:call("get_IsQuestEndShowing")
-	local current_menus_open = gui_manager:call("get_IsHighHudInput")
-	local current_quest_menu = gui_manager:call("isNpcMenuOpen")
-	previous_quest_menu = current_quest_menu
-	
-	if (previous_menus_open and not current_menus_open) or (previous_quest_end and not current_quest_end) then
+	local current_rad_visible = map_controller:call("isRadarVisible")
+	local hide_radar_check = map_controller:call("isCheckHideRadar")
+	local current_can_open = map_controller:call("isCanOpenFromPL")
+
+	if current_rad_visible and previous_can_open and not current_can_open then
 		delay_timer = delay_timer + dt
-		if delay_timer >= menu_i_delay then
-			previous_menus_open = current_menus_open
-			previous_quest_end = current_quest_end
+		if delay_timer >= map_o_delay then
+			previous_can_open = current_can_open
 			delay_timer = 0
 		end
-	elseif current_menus_open and not previous_menus_open then
+	elseif previous_rad_visible and not current_rad_visible then
 		delay_timer = delay_timer + dt
 		if delay_timer >= menu_o_delay then
-			previous_menus_open = current_menus_open
+			previous_rad_visible = current_rad_visible
+			delay_timer = 0
+		end
+	elseif current_rad_visible and not previous_rad_visible then
+		delay_timer = delay_timer + dt
+		if current_can_open and delay_timer >= map_i_delay then
+			previous_rad_visible = current_rad_visible
+			delay_timer = 0
+		elseif delay_timer >= menu_i_delay then
+			previous_rad_visible = current_rad_visible
 			delay_timer = 0
 		end
 	else
-		previous_menus_open = current_menus_open
-		previous_quest_end = current_quest_end
+		previous_rad_visible = current_rad_visible
+		previous_can_open = current_can_open
 	end
-	
-	if previous_quest_end or previous_menus_open or first_visit then
-		return true
-	end
-	return false
-end
 
-local function is_in_tent()
-	local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
-	local in_tent = character:call("get_IsInAllTent")
-	return in_tent
+	return (not previous_rad_visible and not hide_radar_check) or not previous_can_open
 end
 
 local function get_fade()
-	local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
 	local current_hidden = fade_manager:call("get_IsVisibleStateAny")
 	local current_fading = fade_manager:call("get_IsFadingAny")
 	
@@ -663,7 +577,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
             d2d.image(elem.value, xPos, icon_y, drawW, icon_d, alpha)
 			if elem.flag and config.draw_flags then
 				local flagX = xPos - drawW / 2 + margin * 1.5
-				local flagY = is_in_tent() and icon_y - margin * 2.1 or icon_y - icon_d / 2 + margin * 1.2
+				local flagY = is_in_tent and icon_y - margin * 2.1 or icon_y - icon_d / 2 + margin * 1.2
 				d2d.image(img.flag, flagX, flagY, drawW, icon_d, alpha)
 			end
             xPos = xPos + elem.measured_width + gap
@@ -672,7 +586,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
 			local bar_w = icon_d * 0.75
 			local bar_h = icon_d / 25
 			local bar_x = xPos - gap - icon_d + (icon_d - bar_w) / 2
-			local bar_y = is_in_tent() and y + bar_h * 2 or y + icon_d - bar_h * 0.75
+			local bar_y = is_in_tent and y + bar_h * 2 or y + icon_d - bar_h * 0.75
 			local fill_w = bar_w * progress
 			d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, apply_opacity(color.background, alpha))
 			if elem.flag then
@@ -720,29 +634,15 @@ re.on_frame(
             config.box_datas.Nest.count = 0
 			nest_timer_reset = false
 			nest_state_reset = false
-			previous_stage = -1
-			previous_life_area = false
-			previous_base_camp = false
-			config.visited = {
-				plains   = { field = false, life_area = false, base_camp = false },
-				forest   = { field = false, life_area = false, base_camp = false },
-				basin    = { field = false, life_area = false, base_camp = false },
-				cliffs   = { field = false, base_camp = false },
-				ruins    = { field = false, life_area = false, base_camp = false },
-				arena    = { field = false },
-				suja     = { field = true,  life_area = false },
-				g_hub    = { base_camp = false },
-				training = { field = false }
-			}
             save_config()
             return
         end
 		
-		stage_id = environment_manager and environment_manager:get_field("_CurrentStage")
+		stage_id   = environment_manager and environment_manager:get_field("_CurrentStage")
+		is_in_tent = character:call("get_IsInAllTent")
 		
 		if config.hide_w_hud then get_fade() else fade_value = 1 end
 		
-		get_first_visit()
         get_ration_state()
         get_ship_state()
         get_shares_state()
@@ -900,14 +800,14 @@ d2d.register(
 
         local tr_opacity    = config.tr_opacity * fade_value
 		local tr_user_scale = config.tr_user_scale
-        local tr_eff_scale  = is_in_tent() and screen_scale * tr_user_scale * tent_ui_scale or screen_scale * tr_user_scale
+        local tr_eff_scale  = is_in_tent and screen_scale * tr_user_scale * tent_ui_scale or screen_scale * tr_user_scale
         local tr_margin     = base_margin * tr_eff_scale
         local tr_bg_height  = 50 * tr_eff_scale
-        local tr_bg_y       = is_in_tent() and 0 or screen_h - tr_bg_height
+        local tr_bg_y       = is_in_tent and 0 or screen_h - tr_bg_height
         local tr_bg_color   = apply_opacity(color.background, tr_opacity)
         local tr_icon_d     = tr_bg_height * 1.1
 		local tracker_gap   = 18 * tr_eff_scale
-		local tr_icon_y     = is_in_tent() and tr_bg_y + (tr_bg_height - tr_icon_d) / 2 or tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2
+		local tr_icon_y     = is_in_tent and tr_bg_y + (tr_bg_height - tr_icon_d) / 2 or tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2
         local tr_font_size  = math.floor(tr_bg_height - tr_margin * 2)
         local tracker_font  = {
             name   = "Segoe UI",
@@ -967,7 +867,7 @@ d2d.register(
         
         local tr_border_h      = base_border_h * tr_eff_scale
         local tr_end_border_w  = base_end_border_w * tr_eff_scale
-        local tr_border_y      = is_in_tent() and tr_bg_height - (tr_border_h / 2) or tr_bg_y - (tr_border_h / 2)
+        local tr_border_y      = is_in_tent and tr_bg_height - (tr_border_h / 2) or tr_bg_y - (tr_border_h / 2)
         local tr_sect_border_x = tr_end_border_w - (tr_margin / 2)
         local tr_sect_border_w = screen_w - tr_end_border_w - tr_sect_border_x + tr_margin
 		
@@ -986,7 +886,7 @@ d2d.register(
         -- DRAWS
         -------------------------------------------------------------------
 		
-		if not config.hide_w_hud or (not is_hud_hidden() and not is_in_tent()) or (config.draw_in_tent and is_in_tent()) then
+		if not config.hide_w_hud or (not is_hud_hidden() and not is_in_tent) or (config.draw_in_tent and is_in_tent) then
 			-- Draw the ticker
 			if config.draw_ticker then
 				d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
@@ -1014,7 +914,7 @@ d2d.register(
 		end
 		
 		-- Draw the moon
-		if config.draw_moon and (not config.hide_mw_hud or (not is_in_tent() and not is_hud_hidden() and stage_id ~= stage_idx.training)) then
+		if config.draw_moon and (not config.hide_mw_hud or (not is_in_tent and not is_hud_hidden() and stage_id ~= stage_idx.training)) then
 			d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, fade_value)
             d2d.image(moon, moon_x, moon_y, moon_w, moon_h, fade_value)
 			if config.draw_m_num then
@@ -1062,7 +962,7 @@ re.on_draw_ui(function()
 	if imgui.tree_node("Moon Phase Tracker") then
         local checkboxes = {
             { "Display Moon Phase", "draw_moon"   },
-			{ "Display Numerals",   "draw_m_num"  },
+			{ "Numerals",           "draw_m_num"  },
 			{ "Hide with HUD",      "hide_mw_hud" }
         }
         for _, cb in ipairs(checkboxes) do
