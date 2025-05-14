@@ -1,83 +1,304 @@
-adjust delay for minimap detection
-hide moon & option to hide tracker at table/arm wrestle
-check fishing, portable bbq, barrel bowling, binoculars
 
+hide moon & option to hide tracker at campfire
+hide while sitting down at hub canteen
+show moon in rest menu
 hotkey toggle
-reposition moon in rest menu
-hide in quest
- - hide in combat only
 ship/trades ticker
  - reposition ticker in tent
 moon position for non-16:9
 shares flag on items available
 
-
-
-- users will need to delete config when updating
-- added tracker toggle
-- added toggle-able progress bars
-- added option to hide tracker with hud
-	- fades away when fast travel/loading screen
-	- hides when menu open/quest end/area title shows
-		- option to show in tent (different position)
-- added option to hide moon with hud
-	- hides when menu open (including tent)
-	- hides when fast travel/loading screen
-	- hides in training area
+- options to hide in quests and combat
+- improved hide with hud handling
+	- moon now hides while bowling, arm wrestling, and sitting at a table
+	- moon now shows on map
+	- option to show tracker on map
+	- options to hide tracker while bowling, arm wrestling, and sitting at a table
 
 
 
 
 
-MAP
-closed:
-	previous_rad_visible, current_rad_visible, previous_can_open, current_can_open
-opening:
-	not current_can_open (opening)
-	not previous_can_open (UI hidden)
-	not current_rad_visible, not previous_rad_visible (open)
-open:
-	not previous_rad_visible, not current_rad_visible, not previous_can_open, not current_can_open
-closing:
-	current_rad_visible (closing)
-	previous_rad_visible (UI shown)
-	current_can_open, previous_can_open (closed)
-closed:
-	previous_rad_visible, current_rad_visible, previous_can_open, current_can_open	
-
-MENU
-closed:
-	previous_rad_visible, current_rad_visible, previous_can_open, current_can_open
-opening:
-	not current_rad_visible, not current_can_open (opening)
-	not previous_rad_visible (UI hidden)
-	current_can_open (open)
-open:
-	not previous_rad_visible, not current_rad_visible, previous_can_open, current_can_open
-closing:
-	current_rad_visible, not current_can_open (closing)
-	previous_rad_visible (UI shown)
-	current_can_open (closed)
-closed:
-	previous_rad_visible, current_rad_visible, previous_can_open, current_can_open
 
 
-When neither the menu nor the map is open, current_rad_visible is true and current_can_open is true.
-When the menu is being opened, current_rad_visible becomes false and current_can_open becomes false.
-After a delay (menu_o_delay), the HUD becomes hidden.
-Once the menu has finished opening, current_can_open becomes true.
-When the menu is being closed, current_rad_visible becomes true and current_can_open becomes false.
-After a delay (menu_i_delay), the HUD becomes shown.
-Once the menu has finished closing, current_can_open becomes true.
-When the map is being opened, only current_can_open becomes false.
-After a delay (map_o_delay), the HUD becomes hidden.
-Once the map has finished opening, current_rad_visible becomes false.
-When the map is being closed, only current_rad_visible becomes true.
-After a delay (map_i_delay), the HUD becomes shown.
-Once the map has finished closing, current_can_open becomes true.
 
-I would like a function is_hud_hidden() that returns true whenever the HUD is currently hidden.
 
+
+
+
+
+
+
+
+2, 44, 0, 0   - plains, forest, basin, cliffs, ruins, arena
+2, 37, 44, 0  - trail, tunnel, path, approach
+2, 38, 44, 0  - suja
+2, 39, 44, 0  - hub
+2, 36, 40, 44 - training area
+2, 39, 42, 44 - arm wrestling in hub
+2, 39, 43, 44 - table in hub
+
+-----------------------------
+-----------------------------
+
+OPEN MENU (training)
+Wait (init)
+Wait
+
+CLOSE MENU (training) - done
+Wait (init)
+OpenRadarMask
+OpenRadar
+RadarActive
+CloseRadarModel
+CloseRadarMask
+Wait
+
+-----------------------
+
+OPEN MAP 2 (training) - done
+Wait (init)
+WaitOpenReq
+CloseRadarModel
+CloseRadarMask
+Wait
+OpenMask
+OpenModel
+Active - day/weather appears
+
+CLOSE MAP 2 (training)
+Active (init)
+CloseModel
+CloseMask - day/weather disappears
+Wait
+
+OPEN MAP 0
+
+CLOSE MAP 0
+
+--------------------------
+
+FAST TRAVEL -> training (checkChangeArea)
+Active (init)
+CloseModel
+CloseMask
+Wait
+OpenRadarMask
+OpenRadar
+RadarActive - group appears
+CloseRadarModel
+CloseRadarMask - group disappears
+Wait
+
+-------------------------
+
+OPEN NPC (training)
+Wait (init)
+Wait
+
+CLOSE NPC (training)
+Wait (init)
+OpenRadarMask
+OpenRadar
+RadarActive
+CloseRadarModel
+CloseRadarMask
+Wait
+
+-------------------------
+
+AREA NAME (training)
+Wait (init)
+OpenRadarMask
+OpenRadar
+RadarActive
+CloseRadarModel
+CloseRadarMask
+Wait
+
+-----------------------------------
+-----------------------------------
+
+OPEN MENU
+RadarActive (init)
+CloseRadarModel
+CloseRadarMask - group disappears
+Wait
+
+CLOSE MENU
+Wait (init)
+OpenRadarMask
+OpenRadar - day/weather appears
+RadarActive - radar appears
+
+----------------------------
+
+MENU -> MAP 0
+Wait (init)
+WaitOpenReq
+CloseRadarModel
+CloseRadarMask
+Wait
+OpenModel
+Active - day/weather appears
+
+MENU -> WORLD MAP
+Wait (init)
+WaitOpenReq
+CloseRadarModel
+CloseRadarMask
+Wait
+
+--------------------------
+
+OPEN MAP 2
+RadarActive (init)
+WaitOpenReq
+CloseRadarModel
+CloseRadarMask - group disappears
+Wait
+OpenMask
+OpenModel
+Active - day/weather appears
+
+CLOSE MAP 2
+Active (init)
+CloseModel
+CloseMask - day/weather disappears
+OpenRadarMask
+OpenRadar
+RadarActive - group appears
+
+
+OPEN MAP 0
+RadarActive (init)
+WaitOpenReq
+CloseRadarModel
+CloseRadarMask - group disappears
+Wait
+OpenModel
+Active - day/weather appears
+
+CLOSE MAP 0
+Active (init)
+CloseModel
+CloseMask - day/weather disappears
+OpenRadarMask
+OpenRadar
+RadarActive - group appears
+
+--------------------------------
+
+CHANGE MAPS 2 -> 0
+Active (init)
+CloseModel
+CloseMask - day/weather disappears
+Wait
+OpenModel
+Active - day/weather appears
+
+CHANGE MAPS 0 -> 2
+Active (init)
+CloseModel
+CloseMask - day/weather disappears
+Wait
+OpenMask
+OpenModel
+Active - day/weather appears
+
+--------------------------------
+
+2 -> WORLD MAP
+Active (init)
+CloseModel
+CloseMask - day/weather disappears
+Wait
+
+WORLD MAP -> 2
+Wait (init)
+OpenMask
+OpenModel
+Active - day/weather appears
+
+0 -> WORLD MAP
+Active (init)
+CloseModel
+CloseMask - day/weather disappears
+Wait
+
+WORLD MAP -> 0
+Wait (init)
+OpenModel
+Active - day/weather appears (if not checkChangeArea)
+
+----------------------------------
+
+FAST TRAVEL (MAP 2)
+Active (init)
+CloseModel
+CloseMask - day/weather disappears
+Wait
+OpenRadarMask
+OpenRadar
+RadarActive - group appears
+
+FAST TRAVEL (MAP 0)
+Active (init)
+CloseModel
+CloseMask - day/weather disappears
+OpenRadarMask
+OpenRadar
+RadarActive - group appears
+
+FAST TRAVEL (checkChangeArea)
+Active (init)
+CloseModel
+CloseMask
+Wait
+OpenRadarMask
+OpenRadar
+RadarActive - group appears, screen may be black
+ - screen no longer black
+ - screen fades to black
+CloseRadarModel - loading screen
+CloseRadarMask - group disappears, but screen is black
+Wait
+OpenRadarMask
+OpenRadar
+RadarActive - group appears
+ - screen no longer black
+
+FAST TRAVEL (WORLD MAP)
+Wait (init)
+OpenRadarMask
+OpenRadar
+RadarActive - group appears
+CloseRadarModel
+CloseRadarMask - group disappears
+Wait
+OpenRadarMask
+OpenRadar
+RadarActive - group appears
+
+----------------------------------
+
+OPEN NPC
+
+CLOSE NPC
+
+---------------------------------
+
+AREA NAME
+RadarActive (init)
+CloseRadarModel
+CloseRadarMask - group disappears
+Wait
+OpenRadarMask
+OpenRadar - day/weather appears
+RadarActive - radar appears
+
+--------------------------------------
+--------------------------------------
 
 
 
@@ -130,32 +351,6 @@ Trader 1 - Musharpeye
 Trader 2 - Gawdygog
 Trader 3 - Aida
 
-
-
-app.PlayerManager
-	call "getMasterPlayerInfo"
-		get_field "<Character>k__BackingField"
-			call "get_IsInTent"
-			call "get_IsInTempTent"
-			call "get_HunterHealth"
-				call "get_HealthMgr"
-					call "get_MaxHealth"
-app.FadeManager
-	get_field "IsFadingAny"
-app.GUIManager
-	get_field "<GUI020006Accessor>k__BackingField"
-		get_field "GUIs"
-			call "get_IsOpenVisibleState"
-app.MissionManager
-	call "isFastTravel"
-app.EnvironmentManager
-	get_field "_MainTime"
-		get_field "_Count"
-app.SaveDataManager
-
-app.GUIManager
-	get_field "_HudDisplayManager"
-		hook "isHudVisible"
 
 
 
@@ -857,3 +1052,4 @@ Methods:
   - <requestSt503WarpToSt101>b__767_0 (System.Void)
   - <checkHitResultAttackPre_Enemy>g__applyCacheParts|786_0 (System.Void)
   - <checkHitResultAttackPre_Enemy>g__applyCacheScar|786_1 (System.Void)
+ 

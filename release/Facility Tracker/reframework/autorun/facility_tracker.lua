@@ -1,37 +1,44 @@
-local json = json
+local re    = re
+local sdk   = sdk
+local d2d   = d2d
+local json  = json
+local imgui = imgui
 
-local captured_args        = nil
-local previous_hidden      = false
-local previous_fading      = false
-local previous_quest_end   = false
-local previous_menus_open  = false
-local previous_quest_menu  = false
-local fade_value           = 0
-local delay_timer          = 0
-local delay_2_timer        = 0
-local in_delay             = 0.15
-local in_speed             = 1
-local out_delay            = 0
-local out_speed            = 2.5
-local menu_o_delay         = 0.06
-local menu_i_delay         = 0.7
-local visit_o_delay        = 0.35
-local visit_i_delay        = 4.29
-local visit_fade_th        = 0.3
-local previous_timer_value = {}
-local tidx                 = {
-    ration  = 0,
-    pugee   = 10,
-    nest    = 11
-}
-
-local stage = nil
-local previous_stage = -1
-local previous_life_area = false
-local previous_base_camp = false
-local first_visit = false
-local stage_id  = -1
-local stage_idx = {
+local captured_args       = nil
+local character           = nil
+local first_run           = false
+local hide_tracker        = false
+local alt_tracker         = false
+local hide_moon           = false
+local map_moon            = false
+local menu_open           = false
+local map_open            = false
+local pugee_open          = false
+local previous_hidden     = false
+local previous_fading     = false
+local previous_hide_radar = false
+local previous_table_sit  = false
+local previous_arm_wrest  = false
+local half_cbt_option     = false
+local quest_combat_hide   = false
+local active_quest        = false
+local in_combat           = false
+local half_combat         = false
+local previous_time       = os.clock()
+local dt                  = 0
+local fade_value          = 0
+local delay_timer         = 0
+local in_delay            = 0.15
+local in_speed            = 1
+local out_delay           = 0
+local out_speed           = 2.5
+local map_i_delay         = 0.3
+local menu_o_delay        = 0.15
+local table_i_delay       = 0.05
+local wrestle_i_delay     = 1.75
+local moon_idx            = nil
+local stage_id            = nil
+local stage_idx           = {
 	plains   = 0,
 	forest   = 1,
 	basin    = 2,
@@ -46,6 +53,18 @@ local stage_idx = {
 	suja     = 12,
 	g_hub    = 14,
 	training = 15
+}
+
+local situations = {
+	arm_wrestling = 42,
+	table_sitting = 43
+}
+
+local previous_timer_value = {}
+local tidx                 = {
+    ration  = 0,
+    pugee   = 10,
+    nest    = 11
 }
 
 local is_in_port              = false
@@ -63,14 +82,6 @@ local npc_names = {
     [1066308736]  = "Plumpeach",
     [1558632320]  = "Sabar"
 }
-
-local previous_nest_time = 1200
-local nest_timer_reset   = false
-local nest_state_reset   = false
-
-local first_run        = false
-local previous_time    = os.clock()
-local dt               = 0
 local table_scale      = 0.9
 local timer_scale      = 0.42
 local flag_scale       = 0.4
@@ -92,6 +103,12 @@ local config = {
     tr_user_scale  = 1.0,
     tr_opacity     = 1.0,
 	draw_in_tent   = true,
+	draw_on_map    = true,
+	hide_w_bowling = false,
+	hide_at_table  = false,
+	hide_w_wrestle = false,
+	half_cbt_hide  = false,
+	qst_cbt_hide   = "No change",
     draw_timers    = false,
 	draw_bars      = true,
 	draw_flags     = true,
@@ -108,17 +125,6 @@ local config = {
 		Apar      = { count = 0, size = 16 },
 		Plumpeach = { count = 0, size = 16 },
 		Sabar     = { count = 0, size = 16 }
-	},
-	visited = {
-		plains   = { field = false, life_area = false, base_camp = false },
-		forest   = { field = false, life_area = false, base_camp = false },
-		basin    = { field = false, life_area = false, base_camp = false },
-		cliffs   = { field = false, base_camp = false },
-		ruins    = { field = false, life_area = false, base_camp = false },
-		arena    = { field = false },
-		suja     = { field = true,  life_area = false },
-		g_hub    = { base_camp = false },
-		training = { field = false }
 	}
 }
 
@@ -141,21 +147,36 @@ local function save_config()
     json.dump_file(config_path, config)
 end
 
+local function capture_args(args)
+    captured_args = args
+end
+
+local function get_index(indexed_table, value)
+	for i, e in ipairs(indexed_table) do
+		if e == value then
+			return i
+		end
+	end
+	return nil
+end
+
 local facility_manager    = sdk.get_managed_singleton("app.FacilityManager")
 local environment_manager = sdk.get_managed_singleton("app.EnvironmentManager")
 local mission_manager     = sdk.get_managed_singleton("app.MissionManager")
 local fade_manager        = sdk.get_managed_singleton("app.FadeManager")
 local gui_manager         = sdk.get_managed_singleton("app.GUIManager")
 local player_manager      = sdk.get_managed_singleton("app.PlayerManager")
+local npc_manager         = sdk.get_managed_singleton("app.NpcManager")
+local minigame_manager    = sdk.get_managed_singleton("app.GameMiniEventManager")
 local timers              = facility_manager:get_field("<_FacilityTimers>k__BackingField")
 local dining              = facility_manager:get_field("<Dining>k__BackingField")
 local ship                = facility_manager:get_field("<Ship>k__BackingField")
 local workshop            = facility_manager:get_field("<LargeWorkshop>k__BackingField")
 local retrieval           = facility_manager:get_field("<Collection>k__BackingField")
-
-local function capture_args(args)
-    captured_args = args
-end
+local rallus              = facility_manager:get_field("<Rallus>k__BackingField")
+local map_controller      = gui_manager:get_field("<MAP3D>k__BackingField")
+local mask_manager        = gui_manager:get_field("<ContentsMaskModule>k__BackingField")
+local bowling             = minigame_manager:get_field("_Bowling")
 
 local function is_active_player()
 	if not timers or timers:get_field("_size") == 0 then
@@ -165,121 +186,213 @@ local function is_active_player()
 	if not info_success or not info then
 		return false
 	end
-	local character_success, character = pcall(function() return info:get_field("<Character>k__BackingField") end)
-	if not character_success or not character then
+	local character_success, character_result = pcall(function() return info:get_field("<Character>k__BackingField") end)
+	if not character_success or not character_result then
 		return false
 	end
+	character = character_result
 	return true
 end
 
-local function get_first_visit()
-    local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
-    local current_life_area = character:call("get_IsInLifeArea")
-    local current_base_camp = character:call("get_IsInBaseCamp")
-	local riding            = character:call("get_IsPorterRiding")
-	local fast_travel       = mission_manager:call("isFastTravel")
-    
-    if not fast_travel and fade_value >= visit_fade_th and (previous_stage ~= stage_id or previous_life_area ~= current_life_area or previous_base_camp ~= current_base_camp) then
-        for key, value in pairs(stage_idx) do
-            if value == stage_id then
-                stage = key
-                break
-            end
-        end
-		
-        if not stage or not config.visited[stage] then return end
-
-        if current_base_camp and not config.visited[stage].base_camp then
-            delay_timer = delay_timer + dt
-            if delay_timer >= visit_o_delay then
-                first_visit = true
-                delay_2_timer = delay_2_timer + dt
-                if delay_2_timer >= visit_i_delay then
-                    previous_stage = stage_id
-                    previous_life_area = current_life_area
-                    previous_base_camp = current_base_camp
-                    config.visited[stage].base_camp = true
-                    first_visit = false
-					delay_2_timer = 0
-                    delay_timer = 0
-                end
-            end
-		elseif current_life_area and not current_base_camp and not config.visited[stage].life_area then
-            delay_timer = delay_timer + dt
-            if delay_timer >= visit_o_delay then
-                first_visit = true
-                delay_2_timer = delay_2_timer + dt
-                if delay_2_timer >= visit_i_delay then
-                    previous_stage = stage_id
-                    previous_life_area = current_life_area
-                    previous_base_camp = current_base_camp
-                    config.visited[stage].life_area = true
-                    first_visit = false
-					delay_2_timer = 0
-                    delay_timer = 0
-                end
-            end
-        elseif not current_life_area and not current_base_camp and not config.visited[stage].field then
-            delay_timer = delay_timer + dt
-            if delay_timer >= visit_o_delay then
-                first_visit = true
-                delay_2_timer = delay_2_timer + dt
-                if delay_2_timer >= visit_i_delay then
-                    previous_stage = stage_id
-                    previous_life_area = current_life_area
-                    previous_base_camp = current_base_camp
-                    config.visited[stage].field = true
-                    first_visit = false
-					delay_2_timer = 0
-                    delay_timer = 0
-                end
-            end
-        else
-			previous_stage = stage_id
-			previous_base_camp = current_base_camp
-			previous_life_area = current_life_area
+local function is_active_situation(situation)
+	local active_situations = mask_manager:get_field("_CurrentActiveSituations"):get_field("_items")
+	for _, element in ipairs(active_situations) do
+		local success, value = pcall(function() return element:get_field("value__") end)
+		if success and value == situations[situation] then
+			return true
 		end
-	end
-end
-
-local function is_hud_hidden()
-	local current_quest_end = mission_manager:call("get_IsQuestEndShowing")
-	local current_menus_open = gui_manager:call("get_IsHighHudInput")
-	local current_quest_menu = gui_manager:call("isNpcMenuOpen")
-	previous_quest_menu = current_quest_menu
-	
-	if (previous_menus_open and not current_menus_open) or (previous_quest_end and not current_quest_end) then
-		delay_timer = delay_timer + dt
-		if delay_timer >= menu_i_delay then
-			previous_menus_open = current_menus_open
-			previous_quest_end = current_quest_end
-			delay_timer = 0
-		end
-	elseif current_menus_open and not previous_menus_open then
-		delay_timer = delay_timer + dt
-		if delay_timer >= menu_o_delay then
-			previous_menus_open = current_menus_open
-			delay_timer = 0
-		end
-	else
-		previous_menus_open = current_menus_open
-		previous_quest_end = current_quest_end
-	end
-	
-	if previous_quest_end or previous_menus_open or first_visit then
-		return true
 	end
 	return false
 end
 
-local function is_in_tent()
-	local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
-	local in_tent = character:call("get_IsInAllTent")
-	return in_tent
+sdk.hook(
+	npc_manager:get_type_definition():get_method("openFacilityFromNpc"),
+	function(args)
+		local npc_address = sdk.to_int64(args[3])
+		pugee_open = npc_address == 46
+	end,
+	nil
+)
+
+local function get_hud_hidden()
+	local quest_end          = mission_manager:call("get_IsQuestEndShowing")
+	local is_in_tent         = character:call("get_IsInAllTent")
+	local map_flow_manager   = map_controller:get_field("_Flow")
+	local change_area        = map_flow_manager:call("checkChangeArea")
+	local current_hide_radar = map_controller:call("isCheckHideRadar")
+	local radar_visible      = map_controller:call("isRadarVisible")
+	local is_bowling         = bowling:call("get_IsPlaying")
+	local current_table_sit  = is_active_situation("table_sitting")
+	local current_arm_wrest  = is_active_situation("arm_wrestling")
+	
+	local cur_map_flow = ""
+	local cur_success, cur_flow = pcall(function() return map_flow_manager:get_field("_CurFlow") end)
+	if cur_success and cur_flow then
+		cur_map_flow = string.sub(cur_flow:get_type_definition():get_name(), #"cGUIMapFlow" + 1)
+	end
+	
+	local next_map_flow = ""
+	local next_success, next_flow = pcall(function() return map_flow_manager:get_field("_NextFlow") end)
+	if next_success and next_flow then
+		next_map_flow = string.sub(next_flow:get_type_definition():get_name(), #"cGUIMapFlow" + 1)
+	end
+	
+	local hide_tr_con1 = map_open or (is_in_tent and not config.draw_in_tent) or (stage_id ~= stage_idx.training and not is_in_tent)
+	local hide_tr_con2 = map_open or quest_end or pugee_open or (is_bowling and config.hide_w_bowling) or (previous_table_sit and config.hide_at_table) or (previous_arm_wrest and config.hide_w_wrestle)
+	local hide_mo_cond = map_open or quest_end or pugee_open or is_bowling or previous_table_sit or previous_arm_wrest or stage_id == stage_idx.training
+	
+	if cur_map_flow == "Wait" then
+		hide_tracker = menu_open or hide_tr_con1
+		alt_tracker = is_in_tent or map_open
+		hide_moon = true
+	end
+	
+	if cur_map_flow == "OpenMask" then
+	
+	end
+	
+	if cur_map_flow == "OpenModel" then
+		alt_tracker = true
+		map_moon = true
+	end
+	
+	if cur_map_flow == "Active" then
+		hide_tracker = not config.draw_on_map
+		alt_tracker = true
+		hide_moon = change_area
+		map_moon = true
+	end
+	
+	if cur_map_flow == "CloseModel" then
+	
+	end
+	
+	if cur_map_flow == "CloseMask" then
+		hide_tracker = true
+		alt_tracker = true
+		hide_moon = true
+		map_moon = true
+	end
+	
+	if cur_map_flow == "OpenRadarMask" then
+		alt_tracker = false
+		map_moon = false
+	end
+	
+	if cur_map_flow == "OpenRadar" then
+		hide_tracker = hide_tr_con2
+		alt_tracker = false
+		hide_moon = hide_mo_cond
+		map_moon = false
+	end
+	
+	if cur_map_flow == "RadarActive" then
+		hide_tracker = hide_tr_con2
+		alt_tracker = false
+		hide_moon = hide_mo_cond
+		map_moon = false
+		map_open = false
+		menu_open = false
+	end
+	
+	if cur_map_flow == "WaitOpenReq" then
+		map_open = true
+	end
+	
+	if cur_map_flow == "CloseRadarModel" then
+	
+	end
+	
+	if cur_map_flow == "CloseRadarMask" then
+		hide_tracker = hide_tr_con1
+		alt_tracker = is_in_tent
+		hide_moon = true
+		map_moon = false
+	end
+	
+	if cur_map_flow == "" then
+	
+	end
+	
+	if radar_visible then
+		pugee_open = false
+	end
+	
+	if previous_table_sit and not current_table_sit then
+		delay_timer = delay_timer + dt
+		if delay_timer >= table_i_delay then
+			previous_table_sit = current_table_sit
+			delay_timer = 0
+		end
+	else
+		previous_table_sit = current_table_sit
+	end
+	
+	if previous_arm_wrest and not current_arm_wrest then
+		delay_timer = delay_timer + dt
+		if delay_timer >= wrestle_i_delay then
+			previous_arm_wrest = current_arm_wrest
+			delay_timer = 0
+		end
+	else
+		previous_arm_wrest = current_arm_wrest
+	end
+	
+	if stage_id == stage_idx.training then
+		if not (map_open or is_in_tent) and previous_hide_radar and not current_hide_radar then
+			menu_open = true
+			delay_timer = delay_timer + dt
+			if delay_timer >= menu_o_delay then
+				previous_hide_radar = current_hide_radar
+				hide_tracker = true
+				delay_timer = 0
+			end
+		elseif map_open and current_hide_radar and not previous_hide_radar then
+			delay_timer = delay_timer + dt
+			if delay_timer >= map_i_delay then
+				previous_hide_radar = current_hide_radar
+				hide_tracker = false
+				alt_tracker = false
+				map_open = false
+				delay_timer = 0
+			end
+		else
+			previous_hide_radar = current_hide_radar
+		end
+	end
+	
+	if not config.hide_w_hud then alt_tracker = false end
+	if not config.hide_mw_hud then map_moon = false end
+end
+
+local function get_qst_cbt_hide()
+	if config.qst_cbt_hide == "No change" then
+		half_cbt_option = false
+		quest_combat_hide = false
+	end
+	
+	if config.qst_cbt_hide == "Hide in quest" then
+		half_cbt_option = false
+		quest_combat_hide = active_quest
+	end
+	
+	if config.qst_cbt_hide == "Hide in any combat" then
+		half_cbt_option = true
+		quest_combat_hide = in_combat or (half_combat and config.half_cbt_hide)
+	end
+	
+	if config.qst_cbt_hide == "Hide in quest or combat" then
+		half_cbt_option = true
+		quest_combat_hide = active_quest or in_combat or (half_combat and config.half_cbt_hide)
+	end
+	
+	if config.qst_cbt_hide == "Hide in quest combat only" then
+		half_cbt_option = true
+		quest_combat_hide = active_quest and (in_combat or (half_combat and config.half_cbt_hide))
+	end
 end
 
 local function get_fade()
-	local character = player_manager:call("getMasterPlayerInfo"):get_field("<Character>k__BackingField")
 	local current_hidden = fade_manager:call("get_IsVisibleStateAny")
 	local current_fading = fade_manager:call("get_IsFadingAny")
 	
@@ -314,12 +427,13 @@ local function get_fade()
 		fade_value = 1
 	end
 	
-	if current_hidden then
+	if previous_hidden and current_hidden then
 		fade_value = 0
 	end
 end
 
--- Update timer
+-- === Facility helper functions ===
+
 local function get_timer(timer_index)
     if not timers then return nil end
 
@@ -340,7 +454,6 @@ local function get_timer(timer_index)
     return nil
 end
 
--- Format as mm:ss
 local function format_time(timer_value)
     if timer_value == nil then return "" end
     local t = math.floor(timer_value)
@@ -363,15 +476,15 @@ end
 
 local function get_box_msg(box)
 	local count = config.box_datas[box].count
-	local size = config.box_datas[box].size
+	local size  = config.box_datas[box].size
 	return string.format("%s: %d/%d", box, count, size)
 end
 
-local function is_box_full(facility)
-	if not config.box_datas[facility] then
-		config.box_datas[facility] = {}
+local function is_box_full(box)
+	if not config.box_datas[box] then
+		config.box_datas[box] = {}
 	end
-	return config.box_datas[facility].full
+	return config.box_datas[box].full
 end
 
 -- === Ingredient Center ===
@@ -444,26 +557,13 @@ local function get_shares_state()
     local reward_items = workshop:call("getRewardItems")
     if not reward_items then return end
     config.box_datas.Shares.count = reward_items:get_field("_size") or 0
-    config.box_datas.Shares.full = workshop:call("isFullRewardItems")
+    config.box_datas.Shares.full  = workshop:call("isFullRewardItems")
     config.box_datas.Shares.ready = workshop:call("canReceiveRewardItems")
 
     if config.box_datas.Shares.count > config.box_datas.Shares.size then
         config.box_datas.Shares.size = config.box_datas.Shares.count
     end
     save_config()
-end
-
-local function get_shares_message()
-    if config.box_datas.Shares.count == 0 then
-        return config.box_datas.Shares.full and "Shares error!" or "No Festival Shares"
-    end
-	if config.box_datas.Shares.full then
-        return "Shares: Full!"
-    end
-	if not config.box_datas.Shares.ready then
-        return "Unavailable!"
-    end
-    return string.format("Shares: %d/%d ", config.box_datas.Shares.count, config.box_datas.Shares.size)
 end
 
 -- === Material Retrieval ===
@@ -555,7 +655,7 @@ sdk.hook(
         end
 
         config.box_datas[npc_name].count = 0
-        config.box_datas[npc_name].full = false
+        config.box_datas[npc_name].full  = false
         save_config()
     end,
     nil
@@ -564,32 +664,18 @@ sdk.hook(
 -- === Bird Nest ===
 
 local function get_nest_state()
-    local current_nest_time = get_timer(11)
-    if current_nest_time then
-        if previous_nest_time < 1 and current_nest_time > 1199 then
-            config.box_datas.Nest.count = config.box_datas.Nest.count + 1
-		end
-		if current_nest_time > config.box_datas.Nest.timer then
-			config.box_datas.Nest.timer = current_nest_time
-		end
-        if config.box_datas.Nest.count > config.box_datas.Nest.size then
-            config.box_datas.Nest.size = config.box_datas.Nest.count
-        end
-		config.box_datas.Nest.full = config.box_datas.Nest.count == config.box_datas.Nest.size
-        previous_nest_time = current_nest_time
-    end
+	if not rallus then return end
+	local timer = get_timer(11)
+	config.box_datas.Nest.count = rallus:get_field("_SupplyNum")
+	config.box_datas.Nest.full  = rallus:call("isStockMax")
+	if timer > config.box_datas.Nest.timer then
+		config.box_datas.Nest.timer = timer
+	end
+	if config.box_datas.Nest.count > config.box_datas.Nest.size then
+		config.box_datas.Nest.size = config.box_datas.Nest.count
+	end
     save_config()
 end
-
--- Reset nest count on collect trinkets
-sdk.hook(
-    sdk.find_type_definition("app.Gm262"):get_method("successButtonEvent"),
-    function(args)
-        config.box_datas.Nest.count = 0
-        save_config()
-    end,
-    nil
-)
 
 -- === Poogie ===
 
@@ -600,15 +686,6 @@ local function get_pugee_state()
 	end
 	config.box_datas.pugee.full = timer < 0
 	save_config()
-end
-
--- === Moon ===
-
-local function get_moon_idx()
-	local moon_controller  = environment_manager:get_field("_MoonController")
-	local active_moon_data = moon_controller:call("getActiveMoonData")
-	local moon_idx         = active_moon_data:call("get_MoonIdx")
-	return moon_idx
 end
 
 -- === Draw helper functions ===
@@ -663,7 +740,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
             d2d.image(elem.value, xPos, icon_y, drawW, icon_d, alpha)
 			if elem.flag and config.draw_flags then
 				local flagX = xPos - drawW / 2 + margin * 1.5
-				local flagY = is_in_tent() and icon_y - margin * 2.1 or icon_y - icon_d / 2 + margin * 1.2
+				local flagY = alt_tracker and icon_y - margin * 2.1 or icon_y - icon_d / 2 + margin * 1.2 -- is_in_tent
 				d2d.image(img.flag, flagX, flagY, drawW, icon_d, alpha)
 			end
             xPos = xPos + elem.measured_width + gap
@@ -672,7 +749,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
 			local bar_w = icon_d * 0.75
 			local bar_h = icon_d / 25
 			local bar_x = xPos - gap - icon_d + (icon_d - bar_w) / 2
-			local bar_y = is_in_tent() and y + bar_h * 2 or y + icon_d - bar_h * 0.75
+			local bar_y = alt_tracker and y + bar_h * 2 or y + icon_d - bar_h * 0.75 -- is_in_tent
 			local fill_w = bar_w * progress
 			d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, apply_opacity(color.background, alpha))
 			if elem.flag then
@@ -696,10 +773,10 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
                 bold   = font.bold,
                 italic = font.italic
             }
-            local table_y      = y + (ref_char_h - ref_char_h * table_scale) / 2
+            local table_y = y + (ref_char_h - ref_char_h * table_scale) / 2
 			local table_icon_d = icon_d * table_scale
             local table_icon_y = icon_y + (icon_d - table_icon_d) * 5/8
-            local table_gap    = gap * table_scale
+            local table_gap = gap * table_scale
             xPos = drawElements(table_font, elem.value, xPos, table_y, table_icon_d, table_icon_y, table_gap, margin, color, alpha, true)
         end
     end
@@ -712,48 +789,37 @@ end
 
 re.on_frame(
     function()
+        local current_time = os.clock()
+        dt = current_time - previous_time
+        previous_time = current_time
+		
+		get_qst_cbt_hide()
+		
         if not is_active_player() then
             first_run = true
 			previous_hidden = true
 			previous_fading = true
-            previous_nest_time = 1200
-            config.box_datas.Nest.count = 0
-			nest_timer_reset = false
-			nest_state_reset = false
-			previous_stage = -1
-			previous_life_area = false
-			previous_base_camp = false
-			config.visited = {
-				plains   = { field = false, life_area = false, base_camp = false },
-				forest   = { field = false, life_area = false, base_camp = false },
-				basin    = { field = false, life_area = false, base_camp = false },
-				cliffs   = { field = false, base_camp = false },
-				ruins    = { field = false, life_area = false, base_camp = false },
-				arena    = { field = false },
-				suja     = { field = true,  life_area = false },
-				g_hub    = { base_camp = false },
-				training = { field = false }
-			}
             save_config()
             return
         end
 		
-		stage_id = environment_manager and environment_manager:get_field("_CurrentStage")
-		
 		if config.hide_w_hud then get_fade() else fade_value = 1 end
 		
-		get_first_visit()
+		local moon_controller = environment_manager:get_field("_MoonController")
+		local active_moon_data = moon_controller:call("getActiveMoonData")
+		moon_idx = active_moon_data:call("get_MoonIdx")
+		stage_id = environment_manager:get_field("_CurrentStage")
+		active_quest = mission_manager:call("get_IsActiveQuest")
+		in_combat = character:call("get_IsCombat")
+		half_combat = character:call("get_IsHalfCombat")
+		
+		get_hud_hidden()
         get_ration_state()
         get_ship_state()
         get_shares_state()
 		get_retrieval_state()
         get_nest_state()
 		get_pugee_state()
-		
-        -- === Time and time delta ===
-        local current_time = os.clock()
-        dt = current_time - previous_time
-        previous_time = current_time
 		
         first_run = false
     end
@@ -765,14 +831,14 @@ re.on_frame(
 
 d2d.register(
     function()
-        color.background    = 0x882E2810    -- Semi-transparent dark tan
-        color.text          = 0xFFFFFFFF    -- White
-        color.timer_text    = 0xFFFCFFA6    -- Light Yellow
-		color.yellow_text   = 0xFFF4DB8A    -- Yellow
-        color.red_text      = 0xFFFF0000    -- Red
-        color.prog_bar      = 0xFF00FF00    -- Green
-        color.full_bar      = 0xFFE6B00B    -- Orange-yellow
-        color.border        = 0xFFAD9D75    -- Tan
+        color.background  = 0x882E2810   -- Semi-transparent dark tan
+        color.text        = 0xFFFFFFFF   -- White
+        color.timer_text  = 0xFFFCFFA6   -- Light Yellow
+		color.yellow_text = 0xFFF4DB8A   -- Yellow
+        color.red_text    = 0xFFFF0000   -- Red
+        color.prog_bar    = 0xFF00FF00   -- Green
+        color.full_bar    = 0xFFE6B00B   -- Orange-yellow
+        color.border      = 0xFFAD9D75   -- Tan
     
         img.border_left    = d2d.Image.new("facility_tracker/border_left.png")
         img.border_right   = d2d.Image.new("facility_tracker/border_right.png")
@@ -900,14 +966,14 @@ d2d.register(
 
         local tr_opacity    = config.tr_opacity * fade_value
 		local tr_user_scale = config.tr_user_scale
-        local tr_eff_scale  = is_in_tent() and screen_scale * tr_user_scale * tent_ui_scale or screen_scale * tr_user_scale
+        local tr_eff_scale  = alt_tracker and screen_scale * tr_user_scale * tent_ui_scale or screen_scale * tr_user_scale -- is_in_tent
         local tr_margin     = base_margin * tr_eff_scale
         local tr_bg_height  = 50 * tr_eff_scale
-        local tr_bg_y       = is_in_tent() and 0 or screen_h - tr_bg_height
+        local tr_bg_y       = alt_tracker and 0 or screen_h - tr_bg_height -- is_in_tent
         local tr_bg_color   = apply_opacity(color.background, tr_opacity)
         local tr_icon_d     = tr_bg_height * 1.1
 		local tracker_gap   = 18 * tr_eff_scale
-		local tr_icon_y     = is_in_tent() and tr_bg_y + (tr_bg_height - tr_icon_d) / 2 or tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2
+		local tr_icon_y     = alt_tracker and tr_bg_y + (tr_bg_height - tr_icon_d) / 2 or tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2 -- is_in_tent
         local tr_font_size  = math.floor(tr_bg_height - tr_margin * 2)
         local tracker_font  = {
             name   = "Segoe UI",
@@ -967,7 +1033,7 @@ d2d.register(
         
         local tr_border_h      = base_border_h * tr_eff_scale
         local tr_end_border_w  = base_end_border_w * tr_eff_scale
-        local tr_border_y      = is_in_tent() and tr_bg_height - (tr_border_h / 2) or tr_bg_y - (tr_border_h / 2)
+        local tr_border_y      = alt_tracker and tr_bg_height - (tr_border_h / 2) or tr_bg_y - (tr_border_h / 2) -- is_in_tent
         local tr_sect_border_x = tr_end_border_w - (tr_margin / 2)
         local tr_sect_border_w = screen_w - tr_end_border_w - tr_sect_border_x + tr_margin
 		
@@ -975,18 +1041,19 @@ d2d.register(
 		-- Moon Tracker
 		-------------------------------------------------------------------
 		
-		local moon   = img["moon_" .. tostring(get_moon_idx())]
-		local m_num  = img["m_num_" .. tostring(get_moon_idx())]
-		local moon_x = 4 * screen_scale
-		local moon_y = 1922 * screen_scale
+		local moon   = img["moon_" .. tostring(moon_idx)]
+		local m_num  = img["m_num_" .. tostring(moon_idx)]
+		local moon_x = (map_moon and 16 or 4) * screen_scale
+		local moon_y = (map_moon and 202 or 1922) * screen_scale
 		local moon_w = 140 * screen_scale
 		local moon_h = 140 * screen_scale
+		local moon_a = (map_moon and 0.9 or 1) * fade_value
 
         -------------------------------------------------------------------
         -- DRAWS
         -------------------------------------------------------------------
 		
-		if not config.hide_w_hud or (not is_hud_hidden() and not is_in_tent()) or (config.draw_in_tent and is_in_tent()) then
+		if not ((config.hide_w_hud and hide_tracker) or quest_combat_hide) then
 			-- Draw the ticker
 			if config.draw_ticker then
 				d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
@@ -1014,93 +1081,192 @@ d2d.register(
 		end
 		
 		-- Draw the moon
-		if config.draw_moon and (not config.hide_mw_hud or (not is_in_tent() and not is_hud_hidden() and stage_id ~= stage_idx.training)) then
-			d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, fade_value)
-            d2d.image(moon, moon_x, moon_y, moon_w, moon_h, fade_value)
+		if config.draw_moon and not (config.hide_mw_hud and hide_moon) then
+			d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, moon_a)
+            d2d.image(moon, moon_x, moon_y, moon_w, moon_h, moon_a)
 			if config.draw_m_num then
-				d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, fade_value)
+				d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, moon_a)
 			end
 		end
     end
 )
 
-re.on_draw_ui(function()
-    if imgui.tree_node("Facility Tracker") then
-        local changed_tr_scale, newVal = imgui.slider_float("Tracker Scale", config.tr_user_scale, 0.0, 2.0)
-        if changed_tr_scale then config.tr_user_scale = newVal; save_config() end
-
-        local changed_tr_opacity, newVal2 = imgui.slider_float("Tracker Opacity", config.tr_opacity, 0.0, 1.0)
-        if changed_tr_opacity then config.tr_opacity = newVal2; save_config() end
-        
-        local checkboxes = {
-            { "Display Tracker", "draw_tracker" },
-			{ "Progress Bars",   "draw_bars"    },
-			{ "Timers",          "draw_timers"  },
-			{ "Flags",           "draw_flags"   },
-			{ "Hide with HUD",   "hide_w_hud"   }
-        }
-        for _, cb in ipairs(checkboxes) do
-            local label, key = cb[1], cb[2]
-            local changedBox, newVal = imgui.checkbox(label, config[key])
-            if changedBox then
-                config[key] = newVal
-                save_config()
-            end
-        end
-		
-		if config.hide_w_hud then
-			local changedBox, newVal = imgui.checkbox("Show in tent", config.draw_in_tent)
-			if changedBox then
-				config.draw_in_tent = newVal
-				save_config()
+re.on_draw_ui(
+	function()
+		local font_size = imgui.get_default_font_size()
+		local window_w = imgui.calc_item_width()
+		local txtbox_w = font_size * 2.5
+		local txtbox_x = window_w - txtbox_w + 23
+		local indent_w = 21
+		if imgui.tree_node("Facility Tracker") then
+			local changed_draw, draw = imgui.checkbox("Display Tracker", config.draw_tracker)
+			if changed_draw then config.draw_tracker = draw; save_config() end
+			imgui.separator()
+			
+			imgui.begin_disabled(not config.draw_tracker)
+			
+			local checkboxes = {
+				{ "Progress Bars", "draw_bars"   },
+				{ "Timers",        "draw_timers" },
+				{ "Flags",         "draw_flags"  }
+			}
+			for _, cb in ipairs(checkboxes) do
+				local label, key = cb[1], cb[2]
+				local changedBox, newVal = imgui.checkbox(label, config[key])
+				if changedBox then
+					config[key] = newVal
+					save_config()
+				end
 			end
+			imgui.separator()
+			
+			local qst_cbt_options = {
+				"No change",
+				"Hide in quest",
+				"Hide in any combat",
+				"Hide in quest or combat",
+				"Hide in quest combat only"
+			}
+			local option_index = get_index(qst_cbt_options, config.qst_cbt_hide)
+			imgui.text("In Quest/Combat: ")
+			imgui.push_item_width(font_size * 11.6)
+			local changed_idx, index = imgui.combo("##quest_combat_hide", option_index, qst_cbt_options)
+			imgui.pop_item_width()
+			if changed_idx then config.qst_cbt_hide = qst_cbt_options[index]; save_config() end
+			
+			if half_cbt_option then
+				imgui.indent(indent_w)
+				local changed, half_cbt = imgui.checkbox("Also while monster is searching", config.half_cbt_hide)
+				if changed then config.half_cbt_hide = half_cbt; save_config() end
+				imgui.unindent(indent_w)
+			end
+			imgui.text("")
+			
+			local changed_hwh, hwh = imgui.checkbox("Hide Tracker with HUD", config.hide_w_hud)
+			if changed_hwh then config.hide_w_hud = hwh; save_config() end
+			local hwh_checkboxes = {
+				{ "Show in tent",             "draw_in_tent"   },
+				{ "Show on map",              "draw_on_map"    },
+				{ "Hide while bowling",       "hide_w_bowling" },
+				{ "Hide while arm wrestling", "hide_w_wrestle" },
+				{ "Hide at hub tables",       "hide_at_table"  }
+			}
+			if config.hide_w_hud then
+				imgui.indent(indent_w)
+				imgui.text("Options:")
+				for _, cb in ipairs(hwh_checkboxes) do
+					local label, key = cb[1], cb[2]
+					local changedBox, newVal = imgui.checkbox(label, config[key])
+					if changedBox then
+						config[key] = newVal
+						save_config()
+					end
+				end
+				imgui.unindent(indent_w)
+			end
+			imgui.separator()
+			
+			imgui.text("Tracker Scale:")
+			imgui.same_line()
+			
+			local cursor_pos1 = imgui.get_cursor_pos()
+			imgui.set_cursor_pos(Vector2f.new(txtbox_x, cursor_pos1.y))
+			imgui.push_item_width(txtbox_w)
+			local chg_scale_txt, scale_string, _, _ = imgui.input_text(" (0.0 to 2.0)", config.tr_user_scale)
+			local scale_txt = math.min(2, math.max(0, tonumber(scale_string) or 1))
+			if chg_scale_txt then config.tr_user_scale = scale_txt; save_config() end
+			imgui.pop_item_width()
+			
+			local chg_scale_sld, scale_sld = imgui.slider_float("##scale", config.tr_user_scale, 0.0, 2.0)
+			if chg_scale_sld then config.tr_user_scale = scale_sld; save_config() end
+			
+			imgui.text("Tracker Opacity:")
+			imgui.same_line()
+			
+			local cursor_pos2 = imgui.get_cursor_pos()
+			imgui.set_cursor_pos(Vector2f.new(txtbox_x, cursor_pos2.y))
+			imgui.push_item_width(txtbox_w)
+			local chg_opac_txt, opacity_string, _, _ = imgui.input_text(" (0.0 to 1.0)", config.tr_opacity)
+			local opac_txt = math.min(1, math.max(0, tonumber(opacity_string) or 1))
+			if chg_opac_txt then config.tr_opacity = opac_txt; save_config() end
+			imgui.pop_item_width()
+			
+			
+			local chg_opac_sld, opac_sld = imgui.slider_float("##opacity", config.tr_opacity, 0.0, 1.0)
+			if chg_opac_sld then config.tr_opacity = opac_sld; save_config() end
+			imgui.separator()
+			
+			imgui.end_disabled()
+			
+			imgui.tree_pop()
 		end
 		
-        imgui.tree_pop()
-    end
-	
-	if imgui.tree_node("Moon Phase Tracker") then
-        local checkboxes = {
-            { "Display Moon Phase", "draw_moon"   },
-			{ "Display Numerals",   "draw_m_num"  },
-			{ "Hide with HUD",      "hide_mw_hud" }
-        }
-        for _, cb in ipairs(checkboxes) do
-            local label, key = cb[1], cb[2]
-            local changedBox, newVal = imgui.checkbox(label, config[key])
-            if changedBox then
-                config[key] = newVal
-                save_config()
-            end
-        end
+		if imgui.tree_node("Moon Phase Tracker") then
+			local changed_draw, draw = imgui.checkbox("Display Moon Phase", config.draw_moon)
+			if changed_draw then config.draw_moon = draw; save_config() end
+			imgui.separator()
+			
+			imgui.begin_disabled(not config.draw_moon)
+			
+			local checkboxes = {
+				{ "Numerals",           "draw_m_num"  },
+				{ "Hide with HUD",      "hide_mw_hud" }
+			}
+			for _, cb in ipairs(checkboxes) do
+				local label, key = cb[1], cb[2]
+				local changedBox, newVal = imgui.checkbox(label, config[key])
+				if changedBox then
+					config[key] = newVal
+					save_config()
+				end
+			end
+			imgui.separator()
+			
+			imgui.end_disabled()
+			
+			imgui.tree_pop()
+		end
 		
-        imgui.tree_pop()
-    end
-	
-    -- if imgui.tree_node("Trades Ticker") then
-        -- local changed_ti_speed_scale, newVal2 = imgui.slider_float("Ticker Speed", config.ti_speed_scale, 0.1, 3.0)
-        -- if changed_ti_speed_scale then config.ti_speed_scale = newVal2; save_config() end
+		-- if imgui.tree_node("Tracker Data DELETE ME") then
+			-- imgui.text("arm wrestling: " .. tostring(is_active_situation("arm_wrestling")))
+			-- imgui.text("table sitting: " .. tostring(is_active_situation("table_sitting")))
+			-- imgui.text("map open: " .. tostring(map_open))
+			-- imgui.text("menu open: " .. tostring(menu_open))
+			-- imgui.text("hide tracker: " .. tostring(hide_tracker))
+			-- imgui.text("hide moon: " .. tostring(hide_moon))
+			-- imgui.text("fade: " .. tostring(fade_value))
+			-- imgui.text("previous hidden: " .. tostring(previous_hidden))
+			-- imgui.text("current hidden: " .. tostring(fade_manager:call("get_IsVisibleStateAny")))
+			-- imgui.text("previous fading: " .. tostring(previous_fading))
+			-- imgui.text("current fading: " .. tostring(fade_manager:call("get_IsFadingAny")))
+			-- imgui.tree_pop()
+		-- end
+		
+		-- if imgui.tree_node("Trades Ticker") then
+			-- local changed_ti_speed_scale, newVal2 = imgui.slider_float("Ticker Speed", config.ti_speed_scale, 0.1, 3.0)
+			-- if changed_ti_speed_scale then config.ti_speed_scale = newVal2; save_config() end
 
-        -- local changed_ti_scale, newVal = imgui.slider_float("Ticker Scale", config.ti_user_scale, 0.0, 2.0)
-        -- if changed_ti_scale then config.ti_user_scale = newVal; save_config() end
+			-- local changed_ti_scale, newVal = imgui.slider_float("Ticker Scale", config.ti_user_scale, 0.0, 2.0)
+			-- if changed_ti_scale then config.ti_user_scale = newVal; save_config() end
 
-        -- local changed_ti_opacity, newVal3 = imgui.slider_float("Ticker Opacity", config.ti_opacity, 0.0, 1.0)
-        -- if changed_ti_opacity then config.ti_opacity = newVal3; save_config() end
+			-- local changed_ti_opacity, newVal3 = imgui.slider_float("Ticker Opacity", config.ti_opacity, 0.0, 1.0)
+			-- if changed_ti_opacity then config.ti_opacity = newVal3; save_config() end
 
-        -- local checkboxes = {
-            -- { "Display Ticker", "draw_ticker" },
-            -- { "Include Ship",   "draw_ship"   },
-            -- { "Include Trades", "draw_trades" }
-        -- }
-        -- for _, cb in ipairs(checkboxes) do
-            -- local label, key = cb[1], cb[2]
-            -- local changedBox, newVal = imgui.checkbox(label, config[key])
-            -- if changedBox then
-                -- config[key] = newVal
-                -- save_config()
-            -- end
-        -- end
+			-- local checkboxes = {
+				-- { "Display Ticker", "draw_ticker" },
+				-- { "Include Ship",   "draw_ship"   },
+				-- { "Include Trades", "draw_trades" }
+			-- }
+			-- for _, cb in ipairs(checkboxes) do
+				-- local label, key = cb[1], cb[2]
+				-- local changedBox, newVal = imgui.checkbox(label, config[key])
+				-- if changedBox then
+					-- config[key] = newVal
+					-- save_config()
+				-- end
+			-- end
 
-        -- imgui.tree_pop()
-    -- end
-end)
+			-- imgui.tree_pop()
+		-- end
+	end
+)

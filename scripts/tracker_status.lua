@@ -27,6 +27,9 @@ local dining_object = facility_manager and facility_manager:get_field("<Dining>k
 local timers = facility_manager and facility_manager:get_field("<_FacilityTimers>k__BackingField")
 local barter_object = facility_manager and facility_manager:call("get_Barter")
 local large_workshop = facility_manager and facility_manager:get_field("<LargeWorkshop>k__BackingField")
+local bowling = facility_manager and facility_manager:get_field("<Bowling>k__BackingField")
+local nest = facility_manager and facility_manager:get_field("<Rallus>k__BackingField")
+local recital = facility_manager and facility_manager:get_field("<Recital>k__BackingField")
 local environment_manager = sdk.get_managed_singleton("app.EnvironmentManager")
 local fade_manager        = sdk.get_managed_singleton("app.FadeManager")
 local player_manager = sdk.get_managed_singleton("app.PlayerManager")
@@ -34,6 +37,7 @@ local gui_manager = sdk.get_managed_singleton("app.GUIManager")
 local mission_manager = sdk.get_managed_singleton("app.MissionManager")
 local field_manager = sdk.get_managed_singleton("app.MasterFieldManager")
 local camera_manager = sdk.get_managed_singleton("app.CameraManager")
+local minigame_manager = sdk.get_managed_singleton("app.GameMiniEventManager")
 
 local character_methods = {
     { label = "Life Area", method = "get_IsInLifeArea" },
@@ -49,15 +53,59 @@ local character_methods = {
 	{ label = "Draw off", method = "get_IsDrawOff" }
 }
 
+local map_methods = {
+	{ label = "default", method = "get_IsMapDafault" },
+	{ label = "view mode", method = "get_ViewMode" },
+	{ label = "ready", method = "isReady" },
+	{ label = "radar visible", method = "isRadarVisible" },
+	{ label = "hide radar", method = "isCheckHideRadar" },
+	{ label = "can open", method = "isCanOpenFromPL" },
+	{ label = "map wait", method = "isMapWait" },
+	{ label = "detail", method = "isMapActiveDetail" }
+}
+
+local flow_methods = {
+	{ label = "radar mask", method = "isActiveRadarMaskGUI" },
+	{ label = "mask", method = "isActiveMaskGUI" },
+	{ label = "radar map", method = "isOpenRadarMapGUI" },
+	{ label = "map", method = "isOpenMapGUI" },
+	{ label = "wait", method = "isMapWait" },
+	{ label = "detail", method = "isMapActiveDetail" },
+	{ label = "change area", method = "checkChangeArea" }
+}
+
+local hook_result = nil
+
+sdk.hook(
+	sdk.find_type_definition("app.cGUIMaskContentsManager"):get_method("isEnableSituationFlag"),
+	nil,
+	function(retval)
+		hook_result = retval
+		return retval
+	end
+)
+
+local function contains_value(array, ...)
+	local targets = {...}
+	for _, element in ipairs(array) do
+		local value = element:get_field("value__")
+		for _, target in ipairs(targets) do
+			if value == target then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 re.on_draw_ui(function()
-	if imgui.tree_node("Event Cam") then
-		local event = camera_manager and camera_manager:get_field("_IsEventCamera")
-		imgui.text("Event: " .. tostring(event))
+	if imgui.tree_node("Hook") then
+		imgui.text("result: " .. tostring(hook_result))
 		imgui.tree_pop()
 	end
 	
 	if imgui.tree_node("Mission") then
-		local success, result = pcall(function() return mission_manager:call("isFastTravel") end)
+		local success, result = pcall(function() return mission_manager:call("get_IsActiveQuest") end)
 		imgui.text("result: " .. tostring(result))
 		imgui.tree_pop()
 	end
@@ -68,10 +116,62 @@ re.on_draw_ui(function()
 		imgui.tree_pop()
 	end
 	
-	if imgui.tree_node("GUI Methods") then
+	if imgui.tree_node("GUI") then
 		if gui_manager then
-			local success, result = pcall(function() return gui_manager:get_field("<TitleAfterLogin>k__BackingField") end)
-			imgui.text("Result: " .. tostring(result))
+			imgui.text("Contents Mask:")
+			local success3, mask_manager = pcall(function() return gui_manager:get_field("<ContentsMaskModule>k__BackingField") end)
+			local active_situations = success3 and mask_manager:get_field("_CurrentActiveSituations"):get_field("_items")
+			local is_arm_table = contains_value(active_situations, 42, 43)
+			imgui.text("arm wrestling or table: " .. tostring(is_arm_table))
+			
+			imgui.text("MAP METHODS:")
+			local success, map3D = pcall(function() return gui_manager:get_field("<MAP3D>k__BackingField") end)
+			if success then
+				for _, entry in ipairs(map_methods) do
+					local success, result = pcall(function() return map3D:call(entry.method) end)
+                    if success then
+                        imgui.text(string.format("%s: %s", entry.label, tostring(result)))
+                    else
+                        imgui.text(string.format("%s: Error calling %s", entry.label, entry.method))
+                    end
+				end
+			else
+				imgui.text("Map not found.")
+			end
+			
+			imgui.text("")
+			imgui.text("FLOW METHODS:")
+			local map_flow = map3D:get_field("_Flow")
+			if success and map_flow then
+				for _, entry in ipairs(flow_methods) do
+					local success, result = pcall(function() return map_flow:call(entry.method) end)
+					if success then
+						imgui.text(string.format("%s: %s", entry.label, tostring(result)))
+					else
+						imgui.text(string.format("%s: Error calling %s", entry.label, entry.method))
+					end
+				end
+			else
+				imgui.text("Map flow not found.")
+			end
+			
+			imgui.text("")
+			imgui.text("FLOW FIELDS:")
+			local cur_flow = map_flow:get_field("_CurFlow"):get_type_definition()
+			local next_flow = map_flow:get_field("_NextFlow"):get_type_definition()
+			imgui.text("Current Flow: " .. tostring(cur_flow:get_name()))
+			imgui.text("Next Flow: " .. tostring(next_flow:get_name()))
+			
+			imgui.text("")
+			imgui.text("GUIDE METHODS:")
+			local success2, guide = pcall(function() return gui_manager:get_field("<ActionGuide>k__BackingField") end)
+			local guide_result = guide:call("isHudVisible")
+			imgui.text("Hud visible: " .. tostring(guide_result))
+			
+			imgui.text("")
+			imgui.text("GUI METHODS:")
+			local h_result = gui_manager:call("isOpenFullScreenUI")
+			imgui.text("result: " .. tostring(h_result))
 		else
 			imgui.text("GUI not found.")
 		end
