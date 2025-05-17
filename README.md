@@ -36,6 +36,8 @@ Planned features:
     Hide with HUD - Detect when the HUD is not visible and hide the tracker.   --- ADDED!
     An option to reposition the tracker instead of hide it when the player is in a tent.   --- ADDED!
     Support Ship/Trades ticker - A scrolling ticker at the top of the screen displaying the items currently available at the Support Ship if it is in port and the currently available NPC trades. Figuring out how to see what these are has proven pretty difficult, so this may simply not happen.
+    'Don't show'/'Only show' options as suggested by TeCoolMage  --- ADDED!﻿
+    Hotkey toggle as suggested by Drag0zard﻿  --- ADDED!
 
 
 Included is a toggle-able moon phase tracker I made after helping out a bit with BloodTide﻿'s Moon and Day Cycle Tracker. Made with my own images (made from the game's textures) and my own code, but mine is not customizable other than optionally displaying numerals. If you prefer a moon cycle tracker with more appearance options, ability to reposition, etc., head BloodTide's way.

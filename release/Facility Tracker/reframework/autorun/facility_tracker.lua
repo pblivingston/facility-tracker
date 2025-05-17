@@ -19,11 +19,6 @@ local previous_fading     = false
 local previous_hide_radar = false
 local previous_table_sit  = false
 local previous_arm_wrest  = false
-local half_cbt_option     = false
-local quest_combat_hide   = false
-local active_quest        = false
-local in_combat           = false
-local half_combat         = false
 local previous_time       = os.clock()
 local dt                  = 0
 local fade_value          = 0
@@ -37,7 +32,6 @@ local menu_o_delay        = 0.15
 local table_i_delay       = 0.05
 local wrestle_i_delay     = 1.75
 local moon_idx            = nil
-local stage_id            = nil
 local stage_idx           = {
 	plains   = 0,
 	forest   = 1,
@@ -82,6 +76,7 @@ local npc_names = {
     [1066308736]  = "Plumpeach",
     [1558632320]  = "Sabar"
 }
+
 local table_scale      = 0.9
 local timer_scale      = 0.42
 local flag_scale       = 0.4
@@ -90,36 +85,167 @@ local tent_ui_scale    = 0.88
 local color            = {}
 local img              = {}
 
+local imgui_keys = {
+    ["Tab"] = 512,
+    ["LeftArrow"] = 513,
+    ["RightArrow"] = 514,
+    ["UpArrow"] = 515,
+    ["DownArrow"] = 516,
+    ["PageUp"] = 517,
+    ["PageDown"] = 518,
+    ["Home"] = 519,
+    ["End"] = 520,
+    ["Insert"] = 521,
+    ["Delete"] = 522,
+    ["Backspace"] = 523,
+    ["Space"] = 524,
+    ["Enter"] = 525,
+    ["None"] = 526,      -- Escape
+    ["LeftCtrl"] = 527,
+    ["LeftShift"] = 528,
+    ["LeftAlt"] = 529,
+    ["LeftSuper"] = 530,
+    ["RightCtrl"] = 531,
+    ["RightShift"] = 532,
+    ["RightAlt"] = 533,
+    ["RightSuper"] = 534,
+    ["Menu"] = 535,
+    ["Num0"] = 536,
+    ["Num1"] = 537,
+    ["Num2"] = 538,
+    ["Num3"] = 539,
+    ["Num4"] = 540,
+    ["Num5"] = 541,
+    ["Num6"] = 542,
+    ["Num7"] = 543,
+    ["Num8"] = 544,
+    ["Num9"] = 545,
+    ["A"] = 546,
+    ["B"] = 547,
+    ["C"] = 548,
+    ["D"] = 549,
+    ["E"] = 550,
+    ["F"] = 551,
+    ["G"] = 552,
+    ["H"] = 553,
+    ["I"] = 554,
+    ["J"] = 555,
+    ["K"] = 556,
+    ["L"] = 557,
+    ["M"] = 558,
+    ["N"] = 559,
+    ["O"] = 560,
+    ["P"] = 561,
+    ["Q"] = 562,
+    ["R"] = 563,
+    ["S"] = 564,
+    ["T"] = 565,
+    ["U"] = 566,
+    ["V"] = 567,
+    ["W"] = 568,
+    ["X"] = 569,
+    ["Y"] = 570,
+    ["Z"] = 571,
+    ["F1"] = 572,
+    ["F2"] = 573,
+    ["F3"] = 574,
+    ["F4"] = 575,
+    ["F5"] = 576,
+    ["F6"] = 577,
+    ["F7"] = 578,
+    ["F8"] = 579,
+    ["F9"] = 580,
+    ["F10"] = 581,
+    ["F11"] = 582,
+    ["F12"] = 583,
+    ["F13"] = 584,
+    ["F14"] = 585,
+    ["F15"] = 586,
+    ["F16"] = 587,
+    ["F17"] = 588,
+    ["F18"] = 589,
+    ["F19"] = 590,
+    ["F20"] = 591,
+    ["F21"] = 592,
+    ["F22"] = 593,
+    ["F23"] = 594,
+    ["F24"] = 595,
+    ["Apostrophe"] = 596,   -- '
+    ["Comma"] = 597,        -- ,
+    ["Minus"] = 598,        -- -
+    ["Period"] = 599,       -- .
+    ["Slash"] = 600,        -- /
+    ["Semicolon"] = 601,    -- ;
+    ["Equal"] = 602,        -- =
+    ["LeftBracket"] = 603,  -- [
+    ["Backslash"] = 604,    -- \
+    ["RightBracket"] = 605, -- ]
+    ["GraveAccent"] = 606,  -- `
+    ["CapsLock"] = 607,
+    ["ScrollLock"] = 608,
+    ["NumLock"] = 609,
+    ["PrintScreen"] = 610,
+    ["Pause"] = 611,
+    ["Keypad0"] = 612,
+    ["Keypad1"] = 613,
+    ["Keypad2"] = 614,
+    ["Keypad3"] = 615,
+    ["Keypad4"] = 616,
+    ["Keypad5"] = 617,
+    ["Keypad6"] = 618,
+    ["Keypad7"] = 619,
+    ["Keypad8"] = 620,
+    ["Keypad9"] = 621,
+    ["KeypadDecimal"] = 622,
+    ["KeypadDivide"] = 623,
+    ["KeypadMultiply"] = 624,
+    ["KeypadSubtract"] = 625,
+    ["KeypadAdd"] = 626,
+    ["KeypadEnter"] = 627,
+    ["KeypadEqual"] = 628
+}
+
 local config_path = "facility_tracker.json"
 local config = {
     countdown 	   = 3,
-	hide_w_hud     = true,
-	hide_mw_hud    = true,
+	tr_hotkey      = "None",
+	mo_hotkey      = "None",
     draw_ticker    = false,
 	draw_tracker   = true,
+	draw_bars      = true,
+    draw_timers    = false,
+	draw_flags     = true,
+	auto_hide      = true,
+	hide_w_hud     = true,
+	hide_w_bowling = false,
+	hide_w_wrestle = false,
+	hide_at_table  = false,
+	show_when      = "Don't show when:",
+	hide_in_tent   = false,
+	hide_on_map    = false,
+	hide_in_quest  = false,
+	hide_in_combat = false,
+	hide_in_qstcbt = false,
+	hide_in_hlfcbt = false,
+	draw_in_tent   = true,
+	draw_on_map    = true,
+	draw_in_life   = true,
+	draw_in_base   = true,
+	draw_in_train  = false,
     ti_user_scale  = 1.0,
     ti_speed_scale = 1.0,
     ti_opacity     = 1.0,
     tr_user_scale  = 1.0,
     tr_opacity     = 1.0,
-	draw_in_tent   = true,
-	draw_on_map    = true,
-	hide_w_bowling = false,
-	hide_at_table  = false,
-	hide_w_wrestle = false,
-	half_cbt_hide  = false,
-	qst_cbt_hide   = "No change",
-    draw_timers    = false,
-	draw_bars      = true,
-	draw_flags     = true,
 	draw_moon      = true,
 	draw_m_num     = false,
+	auto_hide_m    = true,
 	box_datas	   = {
 		Rations   = { size = 10, timer = 600 },
 		Shares    = { size = 100 },
 		Nest      = { count = 0, size = 5, timer = 1200 },
 		pugee     = { timer = 2520 },
-		retrieval = {},
+		retrieval = { full = false },
 		Rysher    = { count = 0, size = 16 },
 		Murtabak  = { count = 0, size = 16 },
 		Apar      = { count = 0, size = 16 },
@@ -160,6 +286,28 @@ local function get_index(indexed_table, value)
 	return nil
 end
 
+local hotkey_listening = {
+	tr_hotkey = false,
+	mo_hotkey = false
+}
+
+local hotkey_messages  = {
+	tr_hotkey = config.tr_hotkey or "None",
+	mo_hotkey = config.mo_hotkey or "None"
+}
+
+local function get_new_hotkey(hotkey)
+	for key_name, key_index in pairs(imgui_keys) do
+		if imgui.is_key_pressed(key_index) then
+			config[hotkey] = key_name
+			hotkey_messages[hotkey] = key_name
+			hotkey_listening[hotkey] = false
+			save_config()
+			break
+		end
+	end
+end
+
 local facility_manager    = sdk.get_managed_singleton("app.FacilityManager")
 local environment_manager = sdk.get_managed_singleton("app.EnvironmentManager")
 local mission_manager     = sdk.get_managed_singleton("app.MissionManager")
@@ -168,20 +316,8 @@ local gui_manager         = sdk.get_managed_singleton("app.GUIManager")
 local player_manager      = sdk.get_managed_singleton("app.PlayerManager")
 local npc_manager         = sdk.get_managed_singleton("app.NpcManager")
 local minigame_manager    = sdk.get_managed_singleton("app.GameMiniEventManager")
-local timers              = facility_manager:get_field("<_FacilityTimers>k__BackingField")
-local dining              = facility_manager:get_field("<Dining>k__BackingField")
-local ship                = facility_manager:get_field("<Ship>k__BackingField")
-local workshop            = facility_manager:get_field("<LargeWorkshop>k__BackingField")
-local retrieval           = facility_manager:get_field("<Collection>k__BackingField")
-local rallus              = facility_manager:get_field("<Rallus>k__BackingField")
-local map_controller      = gui_manager:get_field("<MAP3D>k__BackingField")
-local mask_manager        = gui_manager:get_field("<ContentsMaskModule>k__BackingField")
-local bowling             = minigame_manager:get_field("_Bowling")
 
 local function is_active_player()
-	if not timers or timers:get_field("_size") == 0 then
-		return false
-	end
 	local info_success, info = pcall(function() return player_manager:call("getMasterPlayerInfo") end)
 	if not info_success or not info then
 		return false
@@ -195,6 +331,7 @@ local function is_active_player()
 end
 
 local function is_active_situation(situation)
+	local mask_manager = gui_manager:get_field("<ContentsMaskModule>k__BackingField")
 	local active_situations = mask_manager:get_field("_CurrentActiveSituations"):get_field("_items")
 	for _, element in ipairs(active_situations) do
 		local success, value = pcall(function() return element:get_field("value__") end)
@@ -214,16 +351,51 @@ sdk.hook(
 	nil
 )
 
-local function get_hud_hidden()
+local function get_hidden()
+	local map_controller     = gui_manager:get_field("<MAP3D>k__BackingField")
+	local active_quest       = mission_manager:call("get_IsActiveQuest")
 	local quest_end          = mission_manager:call("get_IsQuestEndShowing")
 	local is_in_tent         = character:call("get_IsInAllTent")
-	local map_flow_manager   = map_controller:get_field("_Flow")
-	local change_area        = map_flow_manager:call("checkChangeArea")
+	local in_base_camp       = character:call("get_IsInBaseCamp") and not (is_in_tent or map_open)
+	local in_life_area       = character:call("get_IsInLifeArea") and not (is_in_tent or map_open or in_base_camp)
+	local in_combat          = character:call("get_IsCombat")
+	local half_combat        = character:call("get_IsHalfCombat")
 	local current_hide_radar = map_controller:call("isCheckHideRadar")
 	local radar_visible      = map_controller:call("isRadarVisible")
-	local is_bowling         = bowling:call("get_IsPlaying")
+	local map_flow_manager   = map_controller:get_field("_Flow")
+	local change_area        = map_flow_manager:call("checkChangeArea")
+	local is_bowling         = minigame_manager:get_field("_Bowling"):call("get_IsPlaying")
+	local stage_id           = environment_manager:get_field("_CurrentStage")
 	local current_table_sit  = is_active_situation("table_sitting")
 	local current_arm_wrest  = is_active_situation("arm_wrestling")
+	local in_training        = stage_id == stage_idx.training and not (is_in_tent or map_open)
+	local quest_combat       = active_quest and in_combat
+	
+	local hide_w_bowling     = is_bowling and config.hide_w_bowling
+	local hide_w_wrestle     = previous_arm_wrest and config.hide_w_wrestle
+	local hide_at_table      = previous_table_sit and config.hide_at_table
+	
+	local dont_show          = config.show_when == "Don't show when:"
+	local hide_in_tent       = is_in_tent and config.hide_in_tent
+	local hide_on_map        = map_open and config.hide_on_map
+	local hide_in_quest      = active_quest and config.hide_in_quest and not config.hide_in_qstcbt
+	local hide_in_combat     = in_combat and config.hide_in_combat and not config.hide_in_qstcbt
+	local hide_in_qstcbt     = quest_combat and config.hide_in_qstcbt
+	local hide_in_hlfcbt     = half_combat and config.hide_in_hlfcbt and (config.hide_in_combat or (active_quest and config.hide_in_qstcbt))
+
+	local only_show          = config.show_when == "Only show when:"
+	local draw_in_tent       = is_in_tent and config.draw_in_tent
+	local draw_on_map        = map_open and config.draw_on_map
+	local draw_in_life       = in_life_area and config.draw_in_life
+	local draw_in_base       = in_base_camp and config.draw_in_base
+	local draw_in_train      = in_training and config.draw_in_train
+
+	local dont_show_hide     = dont_show and (hide_in_tent or hide_on_map or hide_in_quest or hide_in_combat or hide_in_qstcbt or hide_in_hlfcbt)
+	local only_show_hide     = only_show and not (draw_in_tent or draw_on_map or draw_in_life or draw_in_base or draw_in_train)
+	local hide_w_hud         = config.hide_w_hud and (pugee_open or quest_end or hide_w_bowling or hide_w_wrestle or hide_at_table)
+	
+	local hide_tr_cond       = map_open or dont_show_hide or only_show_hide or (config.hide_w_hud and (menu_open or not (is_in_tent or in_training)))
+	local hide_mo_cond       = map_open or quest_end or pugee_open or is_bowling or previous_table_sit or previous_arm_wrest or in_training
 	
 	local cur_map_flow = ""
 	local cur_success, cur_flow = pcall(function() return map_flow_manager:get_field("_CurFlow") end)
@@ -235,87 +407,6 @@ local function get_hud_hidden()
 	local next_success, next_flow = pcall(function() return map_flow_manager:get_field("_NextFlow") end)
 	if next_success and next_flow then
 		next_map_flow = string.sub(next_flow:get_type_definition():get_name(), #"cGUIMapFlow" + 1)
-	end
-	
-	local hide_tr_con1 = map_open or (is_in_tent and not config.draw_in_tent) or (stage_id ~= stage_idx.training and not is_in_tent)
-	local hide_tr_con2 = map_open or quest_end or pugee_open or (is_bowling and config.hide_w_bowling) or (previous_table_sit and config.hide_at_table) or (previous_arm_wrest and config.hide_w_wrestle)
-	local hide_mo_cond = map_open or quest_end or pugee_open or is_bowling or previous_table_sit or previous_arm_wrest or stage_id == stage_idx.training
-	
-	if cur_map_flow == "Wait" then
-		hide_tracker = menu_open or hide_tr_con1
-		alt_tracker = is_in_tent or map_open
-		hide_moon = true
-	end
-	
-	if cur_map_flow == "OpenMask" then
-	
-	end
-	
-	if cur_map_flow == "OpenModel" then
-		alt_tracker = true
-		map_moon = true
-	end
-	
-	if cur_map_flow == "Active" then
-		hide_tracker = not config.draw_on_map
-		alt_tracker = true
-		hide_moon = change_area
-		map_moon = true
-	end
-	
-	if cur_map_flow == "CloseModel" then
-	
-	end
-	
-	if cur_map_flow == "CloseMask" then
-		hide_tracker = true
-		alt_tracker = true
-		hide_moon = true
-		map_moon = true
-	end
-	
-	if cur_map_flow == "OpenRadarMask" then
-		alt_tracker = false
-		map_moon = false
-	end
-	
-	if cur_map_flow == "OpenRadar" then
-		hide_tracker = hide_tr_con2
-		alt_tracker = false
-		hide_moon = hide_mo_cond
-		map_moon = false
-	end
-	
-	if cur_map_flow == "RadarActive" then
-		hide_tracker = hide_tr_con2
-		alt_tracker = false
-		hide_moon = hide_mo_cond
-		map_moon = false
-		map_open = false
-		menu_open = false
-	end
-	
-	if cur_map_flow == "WaitOpenReq" then
-		map_open = true
-	end
-	
-	if cur_map_flow == "CloseRadarModel" then
-	
-	end
-	
-	if cur_map_flow == "CloseRadarMask" then
-		hide_tracker = hide_tr_con1
-		alt_tracker = is_in_tent
-		hide_moon = true
-		map_moon = false
-	end
-	
-	if cur_map_flow == "" then
-	
-	end
-	
-	if radar_visible then
-		pugee_open = false
 	end
 	
 	if previous_table_sit and not current_table_sit then
@@ -338,20 +429,93 @@ local function get_hud_hidden()
 		previous_arm_wrest = current_arm_wrest
 	end
 	
+	if cur_map_flow == "Wait" then
+		hide_tracker = hide_tr_cond
+		alt_tracker = is_in_tent or map_open
+		hide_moon = true
+	end
+	
+	if cur_map_flow == "OpenMask" then
+	
+	end
+	
+	if cur_map_flow == "OpenModel" then
+		alt_tracker = true
+		map_moon = true
+	end
+	
+	if cur_map_flow == "Active" then
+		hide_tracker = (dont_show and config.hide_on_map) or (only_show and not config.draw_on_map)
+		alt_tracker = true
+		hide_moon = change_area
+		map_moon = true
+	end
+	
+	if cur_map_flow == "CloseModel" then
+	
+	end
+	
+	if cur_map_flow == "CloseMask" then
+		hide_tracker = true
+		alt_tracker = true
+		hide_moon = true
+		map_moon = true
+	end
+	
+	if cur_map_flow == "OpenRadarMask" then
+		alt_tracker = false
+		map_moon = false
+	end
+	
+	if cur_map_flow == "OpenRadar" then
+		hide_tracker = map_open or dont_show_hide or only_show_hide or hide_w_hud
+		alt_tracker = false
+		hide_moon = hide_mo_cond
+		map_moon = false
+	end
+	
+	if cur_map_flow == "RadarActive" then
+		hide_tracker = dont_show_hide or only_show_hide or hide_w_hud
+		alt_tracker = false
+		hide_moon = hide_mo_cond
+		map_moon = false
+		map_open = false
+		menu_open = false
+	end
+	
+	if cur_map_flow == "WaitOpenReq" then
+		map_open = true
+	end
+	
+	if cur_map_flow == "CloseRadarModel" then
+	
+	end
+	
+	if cur_map_flow == "CloseRadarMask" then
+		hide_tracker = hide_tr_cond
+		alt_tracker = is_in_tent
+		hide_moon = true
+		map_moon = false
+	end
+	
+	if cur_map_flow == "" then
+	
+	end
+	
 	if stage_id == stage_idx.training then
 		if not (map_open or is_in_tent) and previous_hide_radar and not current_hide_radar then
 			menu_open = true
 			delay_timer = delay_timer + dt
 			if delay_timer >= menu_o_delay then
 				previous_hide_radar = current_hide_radar
-				hide_tracker = true
+				hide_tracker = (dont_show and hide_in_combat) or (only_show and not draw_in_train) or config.hide_w_hud
 				delay_timer = 0
 			end
 		elseif map_open and current_hide_radar and not previous_hide_radar then
 			delay_timer = delay_timer + dt
 			if delay_timer >= map_i_delay then
 				previous_hide_radar = current_hide_radar
-				hide_tracker = false
+				hide_tracker = (dont_show and hide_in_combat) or (only_show and not draw_in_train)
 				alt_tracker = false
 				map_open = false
 				delay_timer = 0
@@ -361,35 +525,9 @@ local function get_hud_hidden()
 		end
 	end
 	
-	if not config.hide_w_hud then alt_tracker = false end
-	if not config.hide_mw_hud then map_moon = false end
-end
-
-local function get_qst_cbt_hide()
-	if config.qst_cbt_hide == "No change" then
-		half_cbt_option = false
-		quest_combat_hide = false
-	end
-	
-	if config.qst_cbt_hide == "Hide in quest" then
-		half_cbt_option = false
-		quest_combat_hide = active_quest
-	end
-	
-	if config.qst_cbt_hide == "Hide in any combat" then
-		half_cbt_option = true
-		quest_combat_hide = in_combat or (half_combat and config.half_cbt_hide)
-	end
-	
-	if config.qst_cbt_hide == "Hide in quest or combat" then
-		half_cbt_option = true
-		quest_combat_hide = active_quest or in_combat or (half_combat and config.half_cbt_hide)
-	end
-	
-	if config.qst_cbt_hide == "Hide in quest combat only" then
-		half_cbt_option = true
-		quest_combat_hide = active_quest and (in_combat or (half_combat and config.half_cbt_hide))
-	end
+	if radar_visible then pugee_open = false end
+	if not config.auto_hide then alt_tracker = false end
+	if not config.auto_hide_m then map_moon = false end
 end
 
 local function get_fade()
@@ -435,6 +573,7 @@ end
 -- === Facility helper functions ===
 
 local function get_timer(timer_index)
+	local timers = facility_manager:get_field("<_FacilityTimers>k__BackingField")
     if not timers then return nil end
 
     local size = timers:get_field("_size")
@@ -481,15 +620,13 @@ local function get_box_msg(box)
 end
 
 local function is_box_full(box)
-	if not config.box_datas[box] then
-		config.box_datas[box] = {}
-	end
 	return config.box_datas[box].full
 end
 
 -- === Ingredient Center ===
 
 local function get_ration_state()
+	local dining = facility_manager:get_field("<Dining>k__BackingField")
 	if not dining then return end
     local timer = get_timer(0)
     config.box_datas.Rations.count = dining:getSuppliableFoodNum()
@@ -506,6 +643,7 @@ end
 -- === Support Ship ===
 
 local function get_ship_state()
+	local ship = facility_manager:get_field("<Ship>k__BackingField")
     if not ship then return end
 
     local current_near_departure = ship:call("IsNearDeparture")
@@ -553,6 +691,7 @@ end
 -- === Festival Shares ===
 
 local function get_shares_state()
+	local workshop = facility_manager:get_field("<LargeWorkshop>k__BackingField")
     if not workshop then return end
     local reward_items = workshop:call("getRewardItems")
     if not reward_items then return end
@@ -569,6 +708,7 @@ end
 -- === Material Retrieval ===
 
 local function get_retrieval_state()
+	local retrieval = facility_manager:get_field("<Collection>k__BackingField")
 	if not retrieval then return end
 	config.box_datas.retrieval.full = retrieval:call("isAnyFullCollectionItems")
 end
@@ -664,6 +804,7 @@ sdk.hook(
 -- === Bird Nest ===
 
 local function get_nest_state()
+	local rallus = facility_manager:get_field("<Rallus>k__BackingField")
 	if not rallus then return end
 	local timer = get_timer(11)
 	config.box_datas.Nest.count = rallus:get_field("_SupplyNum")
@@ -793,7 +934,15 @@ re.on_frame(
         dt = current_time - previous_time
         previous_time = current_time
 		
-		get_qst_cbt_hide()
+		if imgui.is_key_pressed(imgui_keys[config.tr_hotkey]) and config.tr_hotkey ~= "None" then
+			config.draw_tracker = not config.draw_tracker
+			save_config()
+		end
+		
+		if imgui.is_key_pressed(imgui_keys[config.mo_hotkey]) and config.mo_hotkey ~= "None" then
+			config.draw_moon = not config.draw_moon
+			save_config()
+		end
 		
         if not is_active_player() then
             first_run = true
@@ -803,17 +952,13 @@ re.on_frame(
             return
         end
 		
-		if config.hide_w_hud then get_fade() else fade_value = 1 end
+		if config.auto_hide then get_fade() else fade_value = 1 end
 		
 		local moon_controller = environment_manager:get_field("_MoonController")
 		local active_moon_data = moon_controller:call("getActiveMoonData")
 		moon_idx = active_moon_data:call("get_MoonIdx")
-		stage_id = environment_manager:get_field("_CurrentStage")
-		active_quest = mission_manager:call("get_IsActiveQuest")
-		in_combat = character:call("get_IsCombat")
-		half_combat = character:call("get_IsHalfCombat")
 		
-		get_hud_hidden()
+		get_hidden()
         get_ration_state()
         get_ship_state()
         get_shares_state()
@@ -1053,7 +1198,7 @@ d2d.register(
         -- DRAWS
         -------------------------------------------------------------------
 		
-		if not ((config.hide_w_hud and hide_tracker) or quest_combat_hide) then
+		if not (config.auto_hide and hide_tracker) then
 			-- Draw the ticker
 			if config.draw_ticker then
 				d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
@@ -1081,7 +1226,7 @@ d2d.register(
 		end
 		
 		-- Draw the moon
-		if config.draw_moon and not (config.hide_mw_hud and hide_moon) then
+		if config.draw_moon and not (config.auto_hide_m and hide_moon) then
 			d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, moon_a)
             d2d.image(moon, moon_x, moon_y, moon_w, moon_h, moon_a)
 			if config.draw_m_num then
@@ -1091,70 +1236,46 @@ d2d.register(
     end
 )
 
+----------------------------------------------------------------
+-- CONFIG MENU
+----------------------------------------------------------------
+
 re.on_draw_ui(
 	function()
 		local font_size = imgui.get_default_font_size()
 		local window_w = imgui.calc_item_width()
 		local txtbox_w = font_size * 2.5
 		local txtbox_x = window_w - txtbox_w + 23
-		local indent_w = 21
+		local button_w = font_size * 2.79 + 6
+		local button_h = font_size + 6
+		local button_x = window_w - button_w + 23
+		local indent_w = font_size + 3
+
 		if imgui.tree_node("Facility Tracker") then
-			local changed_draw, draw = imgui.checkbox("Display Tracker", config.draw_tracker)
+			local changed_draw, draw = imgui.checkbox("Display Tracker     ", config.draw_tracker)
 			if changed_draw then config.draw_tracker = draw; save_config() end
+			imgui.same_line()
+			
+			local cursor_pos1 = imgui.get_cursor_pos()
+			imgui.set_cursor_pos(Vector2f.new(button_x, cursor_pos1.y))
+			if imgui.button("Hotkey", Vector2f.new(button_w, button_h)) then
+				hotkey_listening.tr_hotkey = true
+				hotkey_messages.tr_hotkey = "press a key..."
+			end
+			if hotkey_listening.tr_hotkey then get_new_hotkey("tr_hotkey") end
+			imgui.same_line()
+			imgui.text(hotkey_messages.tr_hotkey)
+			
 			imgui.separator()
 			
-			imgui.begin_disabled(not config.draw_tracker)
-			
-			local checkboxes = {
-				{ "Progress Bars", "draw_bars"   },
-				{ "Timers",        "draw_timers" },
-				{ "Flags",         "draw_flags"  }
-			}
-			for _, cb in ipairs(checkboxes) do
-				local label, key = cb[1], cb[2]
-				local changedBox, newVal = imgui.checkbox(label, config[key])
-				if changedBox then
-					config[key] = newVal
-					save_config()
-				end
-			end
-			imgui.separator()
-			
-			local qst_cbt_options = {
-				"No change",
-				"Hide in quest",
-				"Hide in any combat",
-				"Hide in quest or combat",
-				"Hide in quest combat only"
-			}
-			local option_index = get_index(qst_cbt_options, config.qst_cbt_hide)
-			imgui.text("In Quest/Combat: ")
-			imgui.push_item_width(font_size * 11.6)
-			local changed_idx, index = imgui.combo("##quest_combat_hide", option_index, qst_cbt_options)
-			imgui.pop_item_width()
-			if changed_idx then config.qst_cbt_hide = qst_cbt_options[index]; save_config() end
-			
-			if half_cbt_option then
-				imgui.indent(indent_w)
-				local changed, half_cbt = imgui.checkbox("Also while monster is searching", config.half_cbt_hide)
-				if changed then config.half_cbt_hide = half_cbt; save_config() end
-				imgui.unindent(indent_w)
-			end
-			imgui.text("")
-			
-			local changed_hwh, hwh = imgui.checkbox("Hide Tracker with HUD", config.hide_w_hud)
-			if changed_hwh then config.hide_w_hud = hwh; save_config() end
-			local hwh_checkboxes = {
-				{ "Show in tent",             "draw_in_tent"   },
-				{ "Show on map",              "draw_on_map"    },
-				{ "Hide while bowling",       "hide_w_bowling" },
-				{ "Hide while arm wrestling", "hide_w_wrestle" },
-				{ "Hide at hub tables",       "hide_at_table"  }
-			}
-			if config.hide_w_hud then
-				imgui.indent(indent_w)
-				imgui.text("Options:")
-				for _, cb in ipairs(hwh_checkboxes) do
+				imgui.begin_disabled(not config.draw_tracker)
+				
+				local checkboxes = {
+					{ "Progress Bars", "draw_bars"   },
+					{ "Timers",        "draw_timers" },
+					{ "Flags",         "draw_flags"  }
+				}
+				for _, cb in ipairs(checkboxes) do
 					local label, key = cb[1], cb[2]
 					local changedBox, newVal = imgui.checkbox(label, config[key])
 					if changedBox then
@@ -1162,41 +1283,129 @@ re.on_draw_ui(
 						save_config()
 					end
 				end
-				imgui.unindent(indent_w)
-			end
-			imgui.separator()
-			
-			imgui.text("Tracker Scale:")
-			imgui.same_line()
-			
-			local cursor_pos1 = imgui.get_cursor_pos()
-			imgui.set_cursor_pos(Vector2f.new(txtbox_x, cursor_pos1.y))
-			imgui.push_item_width(txtbox_w)
-			local chg_scale_txt, scale_string, _, _ = imgui.input_text(" (0.0 to 2.0)", config.tr_user_scale)
-			local scale_txt = math.min(2, math.max(0, tonumber(scale_string) or 1))
-			if chg_scale_txt then config.tr_user_scale = scale_txt; save_config() end
-			imgui.pop_item_width()
-			
-			local chg_scale_sld, scale_sld = imgui.slider_float("##scale", config.tr_user_scale, 0.0, 2.0)
-			if chg_scale_sld then config.tr_user_scale = scale_sld; save_config() end
-			
-			imgui.text("Tracker Opacity:")
-			imgui.same_line()
-			
-			local cursor_pos2 = imgui.get_cursor_pos()
-			imgui.set_cursor_pos(Vector2f.new(txtbox_x, cursor_pos2.y))
-			imgui.push_item_width(txtbox_w)
-			local chg_opac_txt, opacity_string, _, _ = imgui.input_text(" (0.0 to 1.0)", config.tr_opacity)
-			local opac_txt = math.min(1, math.max(0, tonumber(opacity_string) or 1))
-			if chg_opac_txt then config.tr_opacity = opac_txt; save_config() end
-			imgui.pop_item_width()
-			
-			
-			local chg_opac_sld, opac_sld = imgui.slider_float("##opacity", config.tr_opacity, 0.0, 1.0)
-			if chg_opac_sld then config.tr_opacity = opac_sld; save_config() end
-			imgui.separator()
-			
-			imgui.end_disabled()
+				imgui.separator()
+				
+				local changed_auto, auto = imgui.checkbox("Automatic Hiding", config.auto_hide)
+				if changed_auto then config.auto_hide = auto; save_config() end
+				imgui.text("")
+				
+					imgui.begin_disabled(not config.auto_hide)
+					
+					local changed_hwh, hwh = imgui.checkbox("Hide with HUD", config.hide_w_hud)
+					if changed_hwh then config.hide_w_hud = hwh; save_config() end
+					local hwh_checkboxes = {
+						{ "Hide while bowling",       "hide_w_bowling" },
+						{ "Hide while arm wrestling", "hide_w_wrestle" },
+						{ "Hide at hub tables",       "hide_at_table"  }
+					}
+					if config.hide_w_hud then
+						imgui.indent(indent_w)
+						imgui.text("Options:")
+						for _, cb in ipairs(hwh_checkboxes) do
+							local label, key = cb[1], cb[2]
+							local changedBox, newVal = imgui.checkbox(label, config[key])
+							if changedBox then
+								config[key] = newVal
+								save_config()
+							end
+						end
+						imgui.unindent(indent_w)
+					end
+					imgui.text("")
+					
+					local show_when = {
+						"Don't show when:",
+						"Only show when:"
+					}
+					local show_index = get_index(show_when, config.show_when)
+					imgui.push_item_width(font_size * 8.5)
+					local changed_idx, index = imgui.combo("##show_when", show_index, show_when)
+					if changed_idx then config.show_when = show_when[index]; save_config() end
+					imgui.pop_item_width()
+					
+						imgui.indent(indent_w)
+						
+						if config.show_when == "Don't show when:" then
+							local changed_tent, tent = imgui.checkbox("in a tent", config.hide_in_tent)
+							if changed_tent then config.hide_in_tent = tent; save_config() end
+							
+							local changed_map, map = imgui.checkbox("viewing the map", config.hide_on_map)
+							if changed_map then config.hide_on_map = map; save_config() end
+							
+								imgui.begin_disabled(config.hide_in_qstcbt)
+								
+								local changed_quest, quest = imgui.checkbox("in a quest", config.hide_in_quest)
+								if changed_quest then config.hide_in_quest = quest; save_config() end
+								
+								local changed_combat, combat = imgui.checkbox("in any combat", config.hide_in_combat)
+								if changed_combat then config.hide_in_combat = combat; save_config() end
+								
+								imgui.end_disabled()
+							
+							local changed_qstcbt, qstcbt = imgui.checkbox("in quest combat (exclusive)", config.hide_in_qstcbt)
+							if changed_qstcbt then config.hide_in_qstcbt = qstcbt; save_config() end
+							
+							if config.hide_in_combat or config.hide_in_qstcbt then
+								local changed_hlfcbt, hlfcbt = imgui.checkbox("monster is searching (post-combat)", config.hide_in_hlfcbt)
+								if changed_hlfcbt then config.hide_in_hlfcbt = hlfcbt; save_config() end
+							end
+						end
+						
+						local only_checkboxes = {
+							{ "in a tent",            "draw_in_tent"  },
+							{ "viewing the map",      "draw_on_map"   },
+							{ "in a village",         "draw_in_life"  },
+							{ "in a base camp",       "draw_in_base"  },
+							{ "in the training area", "draw_in_train" }
+						}
+						if config.show_when == "Only show when:" then
+							for _, cb in ipairs(only_checkboxes) do
+								local label, key = cb[1], cb[2]
+								local changedBox, newVal = imgui.checkbox(label, config[key])
+								if changedBox then
+									config[key] = newVal
+									save_config()
+								end
+							end
+						end
+						
+						imgui.unindent(indent_w)
+					
+					imgui.separator()
+					
+					imgui.end_disabled()
+				
+				imgui.text("Tracker Scale:")
+				imgui.same_line()
+				
+				local cursor_pos2 = imgui.get_cursor_pos()
+				imgui.set_cursor_pos(Vector2f.new(txtbox_x, cursor_pos2.y))
+				imgui.push_item_width(txtbox_w)
+				local chg_scale_txt, scale_string, _, _ = imgui.input_text(" (0.0 to 2.0)", config.tr_user_scale)
+				local scale_txt = math.min(2, math.max(0, tonumber(scale_string) or 1))
+				if chg_scale_txt then config.tr_user_scale = scale_txt; save_config() end
+				imgui.pop_item_width()
+				
+				local chg_scale_sld, scale_sld = imgui.slider_float("##scale", config.tr_user_scale, 0.0, 2.0)
+				if chg_scale_sld then config.tr_user_scale = scale_sld; save_config() end
+				
+				imgui.text("Tracker Opacity:")
+				imgui.same_line()
+				
+				local cursor_pos3 = imgui.get_cursor_pos()
+				imgui.set_cursor_pos(Vector2f.new(txtbox_x, cursor_pos3.y))
+				imgui.push_item_width(txtbox_w)
+				local chg_opac_txt, opacity_string, _, _ = imgui.input_text(" (0.0 to 1.0)", config.tr_opacity)
+				local opac_txt = math.min(1, math.max(0, tonumber(opacity_string) or 1))
+				if chg_opac_txt then config.tr_opacity = opac_txt; save_config() end
+				imgui.pop_item_width()
+				
+				
+				local chg_opac_sld, opac_sld = imgui.slider_float("##opacity", config.tr_opacity, 0.0, 1.0)
+				if chg_opac_sld then config.tr_opacity = opac_sld; save_config() end
+				imgui.separator()
+				
+				imgui.end_disabled()
 			
 			imgui.tree_pop()
 		end
@@ -1204,25 +1413,37 @@ re.on_draw_ui(
 		if imgui.tree_node("Moon Phase Tracker") then
 			local changed_draw, draw = imgui.checkbox("Display Moon Phase", config.draw_moon)
 			if changed_draw then config.draw_moon = draw; save_config() end
-			imgui.separator()
+			imgui.same_line()
 			
-			imgui.begin_disabled(not config.draw_moon)
-			
-			local checkboxes = {
-				{ "Numerals",           "draw_m_num"  },
-				{ "Hide with HUD",      "hide_mw_hud" }
-			}
-			for _, cb in ipairs(checkboxes) do
-				local label, key = cb[1], cb[2]
-				local changedBox, newVal = imgui.checkbox(label, config[key])
-				if changedBox then
-					config[key] = newVal
-					save_config()
-				end
+			local cursor_pos1 = imgui.get_cursor_pos()
+			imgui.set_cursor_pos(Vector2f.new(button_x, cursor_pos1.y))
+			if imgui.button("Hotkey", Vector2f.new(button_w, button_h)) then
+				hotkey_listening.mo_hotkey = true
+				hotkey_messages.mo_hotkey = "press a key..."
 			end
+			if hotkey_listening.mo_hotkey then get_new_hotkey("mo_hotkey") end
+			imgui.same_line()
+			imgui.text(hotkey_messages.mo_hotkey)
+			
 			imgui.separator()
 			
-			imgui.end_disabled()
+				imgui.begin_disabled(not config.draw_moon)
+				
+				local checkboxes = {
+					{ "Numerals",         "draw_m_num"  },
+					{ "Automatic Hiding", "auto_hide_m" }
+				}
+				for _, cb in ipairs(checkboxes) do
+					local label, key = cb[1], cb[2]
+					local changedBox, newVal = imgui.checkbox(label, config[key])
+					if changedBox then
+						config[key] = newVal
+						save_config()
+					end
+				end
+				imgui.separator()
+				
+				imgui.end_disabled()
 			
 			imgui.tree_pop()
 		end
