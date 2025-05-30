@@ -19,11 +19,13 @@ shares flag on items available
 
 
 
-
-
-
-
-
+app.GUI020206 - stage name
+app.GUI030000 - start menu
+app.GUI060000 - map              - this is where i left off
+app.GUI090000 - common menu
+app.GUI090100 - stockpile
+app.GUI090200 - grill a meal
+app.GUI090302 - rest menu
 
 
 

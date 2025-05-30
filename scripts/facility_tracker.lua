@@ -11,17 +11,22 @@ local hide_tracker        = false
 local alt_tracker         = false
 local hide_moon           = false
 local map_moon            = false
+local moon_pos            = "radar"
 local menu_open           = false
 local map_open            = false
 local pugee_open          = false
+local current_rest_open   = false
 local previous_hidden     = false
 local previous_fading     = false
 local previous_hide_radar = false
 local previous_table_sit  = false
 local previous_arm_wrest  = false
+local previous_rest_open  = false
 local previous_time       = os.clock()
 local dt                  = 0
+local fade                = 0
 local fade_value          = 0
+local fade_value_m        = 0
 local delay_timer         = 0
 local in_delay            = 0.15
 local in_speed            = 1
@@ -31,6 +36,7 @@ local map_i_delay         = 0.3
 local menu_o_delay        = 0.15
 local table_i_delay       = 0.05
 local wrestle_i_delay     = 1.75
+local rest_io_delay       = 0.18
 local moon_idx            = nil
 local stage_idx           = {
 	plains   = 0,
@@ -319,14 +325,25 @@ local minigame_manager    = sdk.get_managed_singleton("app.GameMiniEventManager"
 
 local function is_active_player()
 	local info_success, info = pcall(function() return player_manager:call("getMasterPlayerInfo") end)
-	if not info_success or not info then
+	if not (info_success and info) then
 		return false
 	end
 	local character_success, character_result = pcall(function() return info:get_field("<Character>k__BackingField") end)
-	if not character_success or not character_result then
+	if not (character_success and character_result) then
 		return false
 	end
 	character = character_result
+	
+	local moon_cont_success, moon_controller = pcall(function() return environment_manager:get_field("_MoonController") end)
+	if not (moon_cont_success and moon_controller) then
+		return false
+	end
+	local moon_data_success, active_moon_data = pcall(function() return moon_controller:get_field("_MainData") end)
+	if not (moon_data_success and active_moon_data) then
+		return false
+	end
+	moon_idx = active_moon_data:call("get_MoonIdx")
+	
 	return true
 end
 
@@ -347,6 +364,22 @@ sdk.hook(
 	function(args)
 		local npc_address = sdk.to_int64(args[3])
 		pugee_open = npc_address == 46
+	end,
+	nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.GUI090302"):get_method("onOpen"),
+	function(args)
+		current_rest_open = true
+	end,
+	nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.GUI090302"):get_method("onClose"),
+	function(args)
+		current_rest_open = false
 	end,
 	nil
 )
@@ -429,10 +462,21 @@ local function get_hidden()
 		previous_arm_wrest = current_arm_wrest
 	end
 	
+	if previous_rest_open ~= current_rest_open then
+		delay_timer = delay_timer + dt
+		if delay_timer >= rest_io_delay then
+			previous_rest_open = current_rest_open
+			delay_timer = 0
+		end
+	else
+		previous_rest_open = current_rest_open
+	end
+
 	if cur_map_flow == "Wait" then
 		hide_tracker = hide_tr_cond
 		alt_tracker = is_in_tent or map_open
-		hide_moon = true
+		hide_moon = not previous_rest_open
+		moon_pos = is_in_tent and "rest" or "radar"
 	end
 	
 	if cur_map_flow == "OpenMask" then
@@ -442,6 +486,7 @@ local function get_hidden()
 	if cur_map_flow == "OpenModel" then
 		alt_tracker = true
 		map_moon = true
+		moon_pos = "map"
 	end
 	
 	if cur_map_flow == "Active" then
@@ -449,6 +494,7 @@ local function get_hidden()
 		alt_tracker = true
 		hide_moon = change_area
 		map_moon = true
+		moon_pos = "map"
 	end
 	
 	if cur_map_flow == "CloseModel" then
@@ -460,11 +506,13 @@ local function get_hidden()
 		alt_tracker = true
 		hide_moon = true
 		map_moon = true
+		moon_pos = "map"
 	end
 	
 	if cur_map_flow == "OpenRadarMask" then
 		alt_tracker = false
 		map_moon = false
+		moon_pos = "radar"
 	end
 	
 	if cur_map_flow == "OpenRadar" then
@@ -472,6 +520,7 @@ local function get_hidden()
 		alt_tracker = false
 		hide_moon = hide_mo_cond
 		map_moon = false
+		moon_pos = "radar"
 	end
 	
 	if cur_map_flow == "RadarActive" then
@@ -479,6 +528,7 @@ local function get_hidden()
 		alt_tracker = false
 		hide_moon = hide_mo_cond
 		map_moon = false
+		moon_pos = "radar"
 		map_open = false
 		menu_open = false
 	end
@@ -496,6 +546,7 @@ local function get_hidden()
 		alt_tracker = is_in_tent
 		hide_moon = true
 		map_moon = false
+		moon_pos = is_in_tent and "rest" or "radar"
 	end
 	
 	if cur_map_flow == "" then
@@ -527,19 +578,18 @@ local function get_hidden()
 	
 	if radar_visible then pugee_open = false end
 	if not config.auto_hide then alt_tracker = false end
-	if not config.auto_hide_m then map_moon = false end
+	if not config.auto_hide_m then map_moon = false end -- moon_pos = "radar"
 end
 
 local function get_fade()
 	local current_hidden = fade_manager:call("get_IsVisibleStateAny")
 	local current_fading = fade_manager:call("get_IsFadingAny")
 	
-	
 	if current_fading and not previous_fading then
 		delay_timer = delay_timer + dt
 		if delay_timer >= out_delay then
-			fade_value = math.max(fade_value - out_speed * dt, 0)
-			if fade_value == 0 then
+			fade = math.max(fade - out_speed * dt, 0)
+			if fade == 0 then
 				previous_fading = current_fading
 				delay_timer = 0
 			end
@@ -551,8 +601,8 @@ local function get_fade()
 	if previous_hidden and not current_hidden then
 		delay_timer = delay_timer + dt
 		if delay_timer >= in_delay then
-			fade_value = math.min(fade_value + in_speed * dt, 1)
-			if fade_value == 1 then
+			fade = math.min(fade + in_speed * dt, 1)
+			if fade == 1 then
 				previous_hidden = current_hidden
 				delay_timer = 0
 			end
@@ -562,12 +612,15 @@ local function get_fade()
 	end
 	
 	if not current_fading and not previous_hidden then
-		fade_value = 1
+		fade = 1
 	end
 	
 	if previous_hidden and current_hidden then
-		fade_value = 0
+		fade = 0
 	end
+	
+	fade_value = config.auto_hide and fade or 1
+	fade_value_m = config.auto_hide_m and fade or 1
 end
 
 -- === Facility helper functions ===
@@ -952,12 +1005,9 @@ re.on_frame(
             return
         end
 		
-		if config.auto_hide then get_fade() else fade_value = 1 end
+		-- print("starting on-frame updates!")
 		
-		local moon_controller = environment_manager:get_field("_MoonController")
-		local active_moon_data = moon_controller:call("getActiveMoonData")
-		moon_idx = active_moon_data:call("get_MoonIdx")
-		
+		get_fade()
 		get_hidden()
         get_ration_state()
         get_ship_state()
@@ -1025,6 +1075,7 @@ d2d.register(
     end,
     function()
         if not is_active_player() then return end
+		-- print("starting draw!")
     
         local screen_w, screen_h = d2d.surface_size()
         local screen_scale       = screen_h / 2160.0
@@ -1188,11 +1239,11 @@ d2d.register(
 		
 		local moon   = img["moon_" .. tostring(moon_idx)]
 		local m_num  = img["m_num_" .. tostring(moon_idx)]
-		local moon_x = (map_moon and 16 or 4) * screen_scale
-		local moon_y = (map_moon and 202 or 1922) * screen_scale
+		local moon_x = (moon_pos == "map" and 16 or moon_pos == "rest" and 4 or 4) * screen_scale -- (map_moon and 16 or 4) * screen_scale
+		local moon_y = (moon_pos == "map" and 202 or moon_pos == "rest" and 1722 or 1922) * screen_scale -- (map_moon and 202 or 1922) * screen_scale
 		local moon_w = 140 * screen_scale
 		local moon_h = 140 * screen_scale
-		local moon_a = (map_moon and 0.9 or 1) * fade_value
+		local moon_a = (map_moon and 0.9 or 1) * fade_value_m
 
         -------------------------------------------------------------------
         -- DRAWS
