@@ -221,6 +221,7 @@ local config = {
 	draw_bars      = true,
     draw_timers    = false,
 	draw_flags     = true,
+	old_icons      = true,
 	auto_hide      = true,
 	hide_w_hud     = true,
 	hide_w_bowling = false,
@@ -931,6 +932,9 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
             xPos = xPos + elem.measured_width + gap
         elseif elem.type == "icon" then
             local drawW = scale_elements and (elem.width * table_scale) or elem.width
+			if elem.frame then
+				d2d.image(img.frame_l, xPos, icon_y, drawW, icon_d, alpha)
+			end
             d2d.image(elem.value, xPos, icon_y, drawW, icon_d, alpha)
 			if elem.flag and config.draw_flags then
 				local flagX = xPos - drawW / 2 + margin * 1.5
@@ -1042,6 +1046,8 @@ d2d.register(
         img.error		   = d2d.Image.new("facility_tracker/error.png")
         img.spacer 	       = d2d.Image.new("facility_tracker/spacer.png")
         img.spacer_l 	   = d2d.Image.new("facility_tracker/spacer_l.png")
+		img.frame_s        = d2d.Image.new("facility_tracker/frame_s.png")
+		img.frame_l        = d2d.Image.new("facility_tracker/frame_l.png")
         img.flag 		   = d2d.Image.new("facility_tracker/flag.png")
         img.wilds 	       = d2d.Image.new("facility_tracker/wilds.png")
         img.rations	       = d2d.Image.new("facility_tracker/rations.png")
@@ -1052,11 +1058,16 @@ d2d.register(
         img.workshop       = d2d.Image.new("facility_tracker/workshop.png")
         img.retrieval      = d2d.Image.new("facility_tracker/retrieval.png")
         img.trader		   = d2d.Image.new("facility_tracker/trader.png")
-        img.kunafa         = d2d.Image.new("facility_tracker/kunafa.png")
-        img.wudwuds 	   = d2d.Image.new("facility_tracker/wudwuds.png")
-        img.azuz 	 	   = d2d.Image.new("facility_tracker/azuz.png")
-        img.suja 	 	   = d2d.Image.new("facility_tracker/suja.png")
-        img.sild 	 	   = d2d.Image.new("facility_tracker/sild.png")
+        img.kunafa         = d2d.Image.new("facility_tracker/kunafa_b.png")
+		img.kunafa_old     = d2d.Image.new("facility_tracker/kunafa.png")
+        img.wudwuds 	   = d2d.Image.new("facility_tracker/wudwuds_b.png")
+		img.wudwuds_old    = d2d.Image.new("facility_tracker/wudwuds.png")
+        img.azuz 	 	   = d2d.Image.new("facility_tracker/azuz_b.png")
+		img.azuz_old       = d2d.Image.new("facility_tracker/azuz.png")
+        img.suja 	 	   = d2d.Image.new("facility_tracker/suja_b.png")
+		img.suja_old       = d2d.Image.new("facility_tracker/suja.png")
+        img.sild 	 	   = d2d.Image.new("facility_tracker/sild_b.png")
+		img.sild_old       = d2d.Image.new("facility_tracker/sild.png")
 		img.m_ring         = d2d.Image.new("moon_tracker/ring.png")
 		img.moon_0         = d2d.Image.new("moon_tracker/moon_0.png")
 		img.moon_1         = d2d.Image.new("moon_tracker/moon_1.png")
@@ -1132,7 +1143,7 @@ d2d.register(
             { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "text",  value = "Here's a ticker." },
             { type = "icon",  value = img.ph_icon, width = ti_icon_d },
-			{ type = "table", value = ship_elements   },
+			{ type = "table", value = ship_elements },
             { type = "icon",  value = img.ph_icon, width = ti_icon_d },
             { type = "table", value = trades_elements },
             { type = "icon",  value = img.ph_icon, width = ti_icon_d },
@@ -1177,47 +1188,54 @@ d2d.register(
             bold   = false,
             italic = false
         }
+		local v_icon = {
+			sild    = config.old_icons and img.sild_old or img.sild,
+			kunafa  = config.old_icons and img.kunafa_old or img.kunafa,
+			suja    = config.old_icons and img.suja_old or img.suja,
+			wudwuds = config.old_icons and img.wudwuds_old or img.wudwuds,
+			azuz    = config.old_icons and img.azuz_old or img.azuz
+		}
         local retrieval_elements = {
-            { type = "icon",  value = img.sild, width = tr_icon_d, flag = is_box_full("Rysher")      },
-            { type = "text",  value = get_box_msg("Rysher")    },
-            { type = "icon",  value = img.kunafa, width = tr_icon_d, flag = is_box_full("Murtabak")    },
-            { type = "text",  value = get_box_msg("Murtabak")  },
-            { type = "icon",  value = img.suja, width = tr_icon_d, flag = is_box_full("Apar")      },
-            { type = "text",  value = get_box_msg("Apar")      },
-            { type = "icon",  value = img.wudwuds, width = tr_icon_d, flag = is_box_full("Plumpeach")   },
+            { type = "icon",  value = v_icon.sild, width = tr_icon_d, flag = is_box_full("Rysher"), frame = true },
+            { type = "text",  value = get_box_msg("Rysher") },
+            { type = "icon",  value = v_icon.kunafa, width = tr_icon_d, flag = is_box_full("Murtabak"), frame = true },
+            { type = "text",  value = get_box_msg("Murtabak") },
+            { type = "icon",  value = v_icon.suja, width = tr_icon_d, flag = is_box_full("Apar"), frame = true },
+            { type = "text",  value = get_box_msg("Apar") },
+            { type = "icon",  value = v_icon.wudwuds, width = tr_icon_d, flag = is_box_full("Plumpeach"), frame = true },
             { type = "text",  value = get_box_msg("Plumpeach") },
-            { type = "icon",  value = img.azuz, width = tr_icon_d, flag = is_box_full("Sabar")      },
-            { type = "text",  value = get_box_msg("Sabar")     }
+            { type = "icon",  value = v_icon.azuz, width = tr_icon_d, flag = is_box_full("Sabar"), frame = true },
+            { type = "text",  value = get_box_msg("Sabar") }
         }
         
         local tracker_elements = {
-            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving      },
-			{ type = "text",  value = get_ship_message()         },
-            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving      },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
-            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations")   },
+            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving },
+			{ type = "text",  value = get_ship_message() },
+            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
+            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations") },
 			{ type = "bar",   value = get_timer(tidx.ration), max = config.box_datas.Rations.timer, flag = is_box_full("Rations") },
             { type = "timer", value = get_timer_msg(tidx.ration) },
-			{ type = "text",  value = get_box_msg("Rations")       },
-            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations")   },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
+			{ type = "text",  value = get_box_msg("Rations") },
+            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations") },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
             { type = "icon",  value = img.retrieval, width = tr_icon_d, flag = is_box_full("retrieval") },
-            { type = "table", value = retrieval_elements         },
+            { type = "table", value = retrieval_elements },
             { type = "icon",  value = img.retrieval, width = tr_icon_d, flag = is_box_full("retrieval") },
             { type = "icon",  value = img.spacer_l , width = tr_icon_d },
-            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares")  },
-            { type = "text",  value = get_box_msg("Shares")       },
-            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares")  },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
-            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest")      },
+            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares") },
+            { type = "text",  value = get_box_msg("Shares") },
+            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares") },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
+            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest") },
 			{ type = "bar",   value = get_timer(tidx.nest), max = config.box_datas.Nest.timer, flag = is_box_full("Nest") },
-            { type = "timer", value = get_timer_msg(tidx.nest)   },
-            { type = "text",  value = get_box_msg("Nest")         },
-            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest")      },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d  },
-            { type = "icon",  value = img.pugee, width = tr_icon_d, flag = is_box_full("pugee")     },
+            { type = "timer", value = get_timer_msg(tidx.nest) },
+            { type = "text",  value = get_box_msg("Nest") },
+            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest") },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
+            { type = "icon",  value = img.pugee, width = tr_icon_d, flag = is_box_full("pugee") },
 			{ type = "bar",   value = get_timer(tidx.pugee), max = config.box_datas.pugee.timer, flag = is_box_full("pugee") },
-            { type = "timer", value = get_timer_msg(tidx.pugee)  }
+            { type = "timer", value = get_timer_msg(tidx.pugee) }
         }
         
         local totalTrackerWidth = measureElements(tracker_font, tracker_elements, tracker_gap)
@@ -1322,9 +1340,10 @@ re.on_draw_ui(
 				imgui.begin_disabled(not config.draw_tracker)
 				
 				local checkboxes = {
-					{ "Progress Bars", "draw_bars"   },
-					{ "Timers",        "draw_timers" },
-					{ "Flags",         "draw_flags"  }
+					{ "Progress Bars",     "draw_bars"   },
+					{ "Timers",            "draw_timers" },
+					{ "Flags",             "draw_flags"  },
+					{ "Old Village Icons", "old_icons"   }
 				}
 				for _, cb in ipairs(checkboxes) do
 					local label, key = cb[1], cb[2]

@@ -1,12 +1,13 @@
 
 hide moon & option to hide tracker at campfire
 hide while sitting down at hub canteen
-show moon in rest menu
-detect start menu for showing tracker
+lucky voucher tracker
+system clock
 ship/trades ticker
  - reposition ticker in tent
 moon position for non-16:9
 shares flag on items available
+detect start menu for showing tracker
 
 
 
@@ -21,7 +22,7 @@ shares flag on items available
 
 app.GUI020206 - stage name
 app.GUI030000 - start menu
-app.GUI060000 - map              - this is where i left off
+app.GUI060000 - map
 app.GUI090000 - common menu
 app.GUI090100 - stockpile
 app.GUI090200 - grill a meal
