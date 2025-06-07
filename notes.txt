@@ -1,8 +1,8 @@
 
-hide moon & option to hide tracker at campfire
-hide while sitting down at hub canteen
 lucky voucher tracker
 system clock
+wishlist tracker
+ancient wyvern coins in hub, probably a gimmick
 ship/trades ticker
  - reposition ticker in tent
 moon position for non-16:9
@@ -13,9 +13,40 @@ detect start menu for showing tracker
 
 
 
+app.GUI060000.setInteractButtonAssignPos
 
 
 
+app.GUI020209.guiUpdate | app.GUI090402.guiCloseUpdate | app.GUI040400.guiVisibleUpdate |
+	app.PlayerCommonAction.cLobbyTentChairBase.doUpdate()
+
+
+app.GUI030210PartsPouch.<setupSubMenu>b__19_1 | app.GUI090601.setItemDetailVisible |
+	app.GUI020006PartsAllSliderItem.update()
+		app.GUI020006PartsAllSlider.onLateUpdate()
+
+
+app.GUI020001PanelParams.getCurrentPanelType
+	app.GUI020001PanelBase.updateCurrentPosition()
+
+app.GUI020001PanelBase.updateParts
+	app.GUI020001PanelBase.onLateUpdate()
+
+
+
+app.GUI020001.get_ID | app.GUI020006.get_ID | app.GUI020009.get_ID | app.GUI020018.get_ID | app.GUI060010.get_ID | app.GUI060011.get_ID |
+	app.cGUIHudDisplayManager.applySetting(app.cGUIHudDisplayControl )
+	via.gui.Effect2D.set_ExternColorPresetBlend5(System.Guid )
+
+app.GUI080106PartsList.deactivateCallback | app.GUI600003.setDisableDiceide |
+	ace.cGUIInputCtrl`2<app.GUIID.ID,app.GUIFunc.TYPE>.setInputTarget(System.Boolean )
+
+app.GUI020008PartsPallet.setLastInputDevice |
+	app.GUI020008.checkLastInputDevice(ace.GUIDef.INPUT_DEVICE )
+		app.GUI020008.guiHudUpdate()
+
+app.GUI020008.<guiHudUpdate>b__81_0 |
+	ace.GUIManagerBase`2<app.GUIID.ID,app.GUIFunc.TYPE>.updateOnceAction(System.Collections.Generic.List`1<ace.GUIDef.ONCE_ACTION`2<app.GUIID.ID,app.GUIFunc.TYPE>> )
 
 
 
@@ -30,56 +61,6 @@ app.GUI090302 - rest menu
 
 
 
-
-
-Automatic hiding: auto_hide
-
-Hide with HUD:                  config.hide_w_hud
- - Hide during quest end                                          quest_end
- - Hide while petting poogie                                      pugee_open
- - Hide while bowling           config.hide_w_bowling             is_bowling
- - Hide while arm wrestling     config.hide_w_wrestle             previous_arm_wrest
- - Hide at hub tables           config.hide_at_table              previous_table_sit
-
-Don't show when:                config.show_when == "Don't show"
- - in tent                      config.hide_in_tent               is_in_tent
- - map open                     config.hide_on_map                map_open
- - in quest                     config.hide_in_quest              active_quest        not config.hide_in_qstcbt
- - in any combat                config.hide_in_combat             in_combat           not config.hide_in_qstcbt
- - in quest combat              config.hide_in_qstcbt             quest_combat
- - (conditonal) in half combat  config.hide_in_hlfcbt             half_combat         config.hide_in_combat or config.hide_in_qstcbt
-=== OR ===
-Only show when:                 config.show_when == "Only show"
- - in tent                      config.draw_in_tent               is_in_tent
- - map open                     config.draw_on_map                map_open
- - in village                   config.draw_in_life               in_life_area
- - in base camp                 config.draw_in_base               in_base_camp
- - in training area             config.draw_in_train              in_training
-
-
-local dont_show      = config.show_when == "Don't show"
-local hide_in_tent   = is_in_tent and config.hide_in_tent
-local hide_on_map    = map_open and config.hide_on_map
-local hide_in_quest  = active_quest and config.hide_in_quest and not config.hide_in_qstcbt
-local hide_in_combat = in_combat and config.hide_in_combat and not config.hide_in_qstcbt
-local hide_in_qstcbt = quest_combat and config.hide_in_qstcbt
-local hide_in_hlfcbt = half_combat and config.hide_in_hlfcbt and (config.hide_in_combat or config.hide_in_qstcbt)
-
-local only_show      = config.show_when == "Only show"
-local draw_in_tent   = is_in_tent and config.draw_in_tent
-local draw_on_map    = map_open and config.draw_on_map
-local draw_in_life   = in_life_area and config.draw_in_life
-local draw_in_base   = in_base_camp and config.draw_in_base
-local draw_in_train  = in_training and config.draw_in_train
-
-local dont_show_hide = dont_show and (hide_in_tent or hide_on_map or hide_in_quest or hide_in_combat or hide_in_qstcbt or hide_in_hlfcbt)
-local only_show_hide = only_show and not (draw_in_tent or draw_on_map or draw_in_life or draw_in_base or draw_in_train)
-
-
-"Wait"
-hide_tracker = map_open or dont_show_hide or only_show_hide or (config.hide_w_hud and (menu_open or not (is_in_tent or in_training) ) )
-alt_tracker = config.auto_hide and (is_in_tent or map_open)
-hide_moon = true
 
 
 

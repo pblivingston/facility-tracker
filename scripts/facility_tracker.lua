@@ -10,18 +10,21 @@ local first_run           = false
 local hide_tracker        = false
 local alt_tracker         = false
 local hide_moon           = false
-local map_moon            = false
 local moon_pos            = "radar"
-local menu_open           = false
 local map_open            = false
-local pugee_open          = false
+local map_proc            = false
+local slider_visible      = false
+local current_map_intrct  = false
 local current_rest_open   = false
+local current_camp_sit    = false
+local current_table_sit   = false
+local previous_map_intrct = false
 local previous_hidden     = false
 local previous_fading     = false
-local previous_hide_radar = false
 local previous_table_sit  = false
 local previous_arm_wrest  = false
 local previous_rest_open  = false
+local previous_camp_sit   = false
 local previous_time       = os.clock()
 local dt                  = 0
 local fade                = 0
@@ -32,11 +35,12 @@ local in_delay            = 0.15
 local in_speed            = 1
 local out_delay           = 0
 local out_speed           = 2.5
-local map_i_delay         = 0.3
-local menu_o_delay        = 0.15
+local map_o_delay         = 0.25
+local map_i_delay         = 0.1
 local table_i_delay       = 0.05
 local wrestle_i_delay     = 1.75
 local rest_io_delay       = 0.18
+local camp_i_delay        = 0.05
 local moon_idx            = nil
 local stage_idx           = {
 	plains   = 0,
@@ -213,41 +217,42 @@ local imgui_keys = {
 
 local config_path = "facility_tracker.json"
 local config = {
-    countdown 	   = 3,
-	tr_hotkey      = "None",
-	mo_hotkey      = "None",
-    draw_ticker    = false,
-	draw_tracker   = true,
-	draw_bars      = true,
-    draw_timers    = false,
-	draw_flags     = true,
-	old_icons      = true,
-	auto_hide      = true,
-	hide_w_hud     = true,
-	hide_w_bowling = false,
-	hide_w_wrestle = false,
-	hide_at_table  = false,
-	show_when      = "Don't show when:",
-	hide_in_tent   = false,
-	hide_on_map    = false,
-	hide_in_quest  = false,
-	hide_in_combat = false,
-	hide_in_qstcbt = false,
-	hide_in_hlfcbt = false,
-	draw_in_tent   = true,
-	draw_on_map    = true,
-	draw_in_life   = true,
-	draw_in_base   = true,
-	draw_in_train  = false,
-    ti_user_scale  = 1.0,
-    ti_speed_scale = 1.0,
-    ti_opacity     = 1.0,
-    tr_user_scale  = 1.0,
-    tr_opacity     = 1.0,
-	draw_moon      = true,
-	draw_m_num     = false,
-	auto_hide_m    = true,
-	box_datas	   = {
+    countdown 	     = 3,
+	tr_hotkey        = "None",
+	mo_hotkey        = "None",
+    draw_ticker      = false,
+	draw_tracker     = true,
+	draw_bars        = true,
+    draw_timers      = false,
+	draw_flags       = true,
+	old_icons        = true,
+	auto_hide        = true,
+	hide_w_hud       = true,
+	hide_w_bowling   = false,
+	hide_w_wrestle   = false,
+	hide_at_table    = false,
+	hide_at_camp     = false,
+	show_when        = "Don't show when:",
+	hide_in_tent     = false,
+	hide_on_map      = false,
+	hide_in_quest    = false,
+	hide_in_combat   = false,
+	hide_in_qstcbt   = false,
+	hide_in_hlfcbt   = false,
+	draw_in_tent     = true,
+	draw_on_map      = true,
+	draw_in_life     = true,
+	draw_in_base     = true,
+	draw_in_train    = false,
+    ti_user_scale    = 1.0,
+    ti_speed_scale   = 1.0,
+    ti_opacity       = 1.0,
+    tr_user_scale    = 1.0,
+    tr_opacity       = 1.0,
+	draw_moon        = true,
+	draw_m_num       = false,
+	auto_hide_m      = true,
+	box_datas	     = {
 		Rations   = { size = 10, timer = 600 },
 		Shares    = { size = 100 },
 		Nest      = { count = 0, size = 5, timer = 1200 },
@@ -321,7 +326,6 @@ local mission_manager     = sdk.get_managed_singleton("app.MissionManager")
 local fade_manager        = sdk.get_managed_singleton("app.FadeManager")
 local gui_manager         = sdk.get_managed_singleton("app.GUIManager")
 local player_manager      = sdk.get_managed_singleton("app.PlayerManager")
-local npc_manager         = sdk.get_managed_singleton("app.NpcManager")
 local minigame_manager    = sdk.get_managed_singleton("app.GameMiniEventManager")
 
 local function is_active_player()
@@ -361,75 +365,69 @@ local function is_active_situation(situation)
 end
 
 sdk.hook(
-	npc_manager:get_type_definition():get_method("openFacilityFromNpc"),
-	function(args)
-		local npc_address = sdk.to_int64(args[3])
-		pugee_open = npc_address == 46
-	end,
-	nil
-)
-
-sdk.hook(
 	sdk.find_type_definition("app.GUI090302"):get_method("onOpen"),
-	function(args)
-		current_rest_open = true
-	end,
-	nil
+	function(args) current_rest_open = true end, nil
 )
 
 sdk.hook(
 	sdk.find_type_definition("app.GUI090302"):get_method("onClose"),
-	function(args)
-		current_rest_open = false
-	end,
-	nil
+	function(args) current_rest_open = false end, nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.GUI060000"):get_method("setInteractButtonAssignPos"),
+	function(args) current_map_intrct = true end, nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.GUI020006PartsAllSliderItem"):get_method("update"),
+	function(args) slider_visible = true end, nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cLobbyChairBase"):get_method("doEnter"),
+	function(args) current_table_sit = true end, nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cLobbyChairBase"):get_method("doExit"),
+	function(args) current_table_sit = false end, nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cLobbyTentChairBase"):get_method("doEnter"),
+	function(args) current_camp_sit = true end, nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cLobbyTentChairBase"):get_method("doExit"),
+	function(args) current_camp_sit = false end, nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cCampfireBase"):get_method("doEnter"),
+	function(args) current_camp_sit = true end, nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cCampfireBase"):get_method("doExit"),
+	function(args) current_camp_sit = false end, nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cReclinerChairBase"):get_method("doEnter"),
+	function(args) current_camp_sit = true end, nil
+)
+
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cReclinerChairBase"):get_method("doExit"),
+	function(args) current_camp_sit = false end, nil
 )
 
 local function get_hidden()
 	local map_controller     = gui_manager:get_field("<MAP3D>k__BackingField")
-	local active_quest       = mission_manager:call("get_IsActiveQuest")
-	local quest_end          = mission_manager:call("get_IsQuestEndShowing")
-	local is_in_tent         = character:call("get_IsInAllTent")
-	local in_base_camp       = character:call("get_IsInBaseCamp") and not (is_in_tent or map_open)
-	local in_life_area       = character:call("get_IsInLifeArea") and not (is_in_tent or map_open or in_base_camp)
-	local in_combat          = character:call("get_IsCombat")
-	local half_combat        = character:call("get_IsHalfCombat")
-	local current_hide_radar = map_controller:call("isCheckHideRadar")
-	local radar_visible      = map_controller:call("isRadarVisible")
 	local map_flow_manager   = map_controller:get_field("_Flow")
 	local change_area        = map_flow_manager:call("checkChangeArea")
-	local is_bowling         = minigame_manager:get_field("_Bowling"):call("get_IsPlaying")
-	local stage_id           = environment_manager:get_field("_CurrentStage")
-	local current_table_sit  = is_active_situation("table_sitting")
-	local current_arm_wrest  = is_active_situation("arm_wrestling")
-	local in_training        = stage_id == stage_idx.training and not (is_in_tent or map_open)
-	local quest_combat       = active_quest and in_combat
-	
-	local hide_w_bowling     = is_bowling and config.hide_w_bowling
-	local hide_w_wrestle     = previous_arm_wrest and config.hide_w_wrestle
-	local hide_at_table      = previous_table_sit and config.hide_at_table
-	
-	local dont_show          = config.show_when == "Don't show when:"
-	local hide_in_tent       = is_in_tent and config.hide_in_tent
-	local hide_on_map        = map_open and config.hide_on_map
-	local hide_in_quest      = active_quest and config.hide_in_quest and not config.hide_in_qstcbt
-	local hide_in_combat     = in_combat and config.hide_in_combat and not config.hide_in_qstcbt
-	local hide_in_qstcbt     = quest_combat and config.hide_in_qstcbt
-	local hide_in_hlfcbt     = half_combat and config.hide_in_hlfcbt and (config.hide_in_combat or (active_quest and config.hide_in_qstcbt))
-
-	local only_show          = config.show_when == "Only show when:"
-	local draw_in_tent       = is_in_tent and config.draw_in_tent
-	local draw_on_map        = map_open and config.draw_on_map
-	local draw_in_life       = in_life_area and config.draw_in_life
-	local draw_in_base       = in_base_camp and config.draw_in_base
-	local draw_in_train      = in_training and config.draw_in_train
-
-	local dont_show_hide     = dont_show and (hide_in_tent or hide_on_map or hide_in_quest or hide_in_combat or hide_in_qstcbt or hide_in_hlfcbt)
-	local only_show_hide     = only_show and not (draw_in_tent or draw_on_map or draw_in_life or draw_in_base or draw_in_train)
-	local hide_w_hud         = config.hide_w_hud and (pugee_open or quest_end or hide_w_bowling or hide_w_wrestle or hide_at_table)
-	
-	local hide_tr_cond       = map_open or dont_show_hide or only_show_hide or (config.hide_w_hud and (menu_open or not (is_in_tent or in_training)))
-	local hide_mo_cond       = map_open or quest_end or pugee_open or is_bowling or previous_table_sit or previous_arm_wrest or in_training
 	
 	local cur_map_flow = ""
 	local cur_success, cur_flow = pcall(function() return map_flow_manager:get_field("_CurFlow") end)
@@ -437,10 +435,23 @@ local function get_hidden()
 		cur_map_flow = string.sub(cur_flow:get_type_definition():get_name(), #"cGUIMapFlow" + 1)
 	end
 	
-	local next_map_flow = ""
-	local next_success, next_flow = pcall(function() return map_flow_manager:get_field("_NextFlow") end)
-	if next_success and next_flow then
-		next_map_flow = string.sub(next_flow:get_type_definition():get_name(), #"cGUIMapFlow" + 1)
+	if cur_map_flow == "Active" then map_proc = true end
+	if cur_map_flow == "RadarActive" then map_proc = false end
+	
+	if previous_map_intrct and not current_map_intrct then
+		delay_timer = delay_timer + dt
+		if delay_timer >= map_o_delay then
+			previous_map_intrct = current_map_intrct
+			delay_timer = 0
+		end
+	elseif current_map_intrct and not previous_map_intrct then
+		delay_timer = delay_timer + dt
+		if delay_timer >= map_i_delay then
+			previous_map_intrct = current_map_intrct
+			delay_timer = 0
+		end
+	else
+		previous_map_intrct = current_map_intrct
 	end
 	
 	if previous_table_sit and not current_table_sit then
@@ -453,6 +464,7 @@ local function get_hidden()
 		previous_table_sit = current_table_sit
 	end
 	
+	local current_arm_wrest  = is_active_situation("arm_wrestling")
 	if previous_arm_wrest and not current_arm_wrest then
 		delay_timer = delay_timer + dt
 		if delay_timer >= wrestle_i_delay then
@@ -472,114 +484,66 @@ local function get_hidden()
 	else
 		previous_rest_open = current_rest_open
 	end
-
-	if cur_map_flow == "Wait" then
-		hide_tracker = hide_tr_cond
-		alt_tracker = is_in_tent or map_open
-		hide_moon = not previous_rest_open
-		moon_pos = is_in_tent and "rest" or "radar"
-	end
 	
-	if cur_map_flow == "OpenMask" then
-	
-	end
-	
-	if cur_map_flow == "OpenModel" then
-		alt_tracker = true
-		map_moon = true
-		moon_pos = "map"
-	end
-	
-	if cur_map_flow == "Active" then
-		hide_tracker = (dont_show and config.hide_on_map) or (only_show and not config.draw_on_map)
-		alt_tracker = true
-		hide_moon = change_area
-		map_moon = true
-		moon_pos = "map"
-	end
-	
-	if cur_map_flow == "CloseModel" then
-	
-	end
-	
-	if cur_map_flow == "CloseMask" then
-		hide_tracker = true
-		alt_tracker = true
-		hide_moon = true
-		map_moon = true
-		moon_pos = "map"
-	end
-	
-	if cur_map_flow == "OpenRadarMask" then
-		alt_tracker = false
-		map_moon = false
-		moon_pos = "radar"
-	end
-	
-	if cur_map_flow == "OpenRadar" then
-		hide_tracker = map_open or dont_show_hide or only_show_hide or hide_w_hud
-		alt_tracker = false
-		hide_moon = hide_mo_cond
-		map_moon = false
-		moon_pos = "radar"
-	end
-	
-	if cur_map_flow == "RadarActive" then
-		hide_tracker = dont_show_hide or only_show_hide or hide_w_hud
-		alt_tracker = false
-		hide_moon = hide_mo_cond
-		map_moon = false
-		moon_pos = "radar"
-		map_open = false
-		menu_open = false
-	end
-	
-	if cur_map_flow == "WaitOpenReq" then
-		map_open = true
-	end
-	
-	if cur_map_flow == "CloseRadarModel" then
-	
-	end
-	
-	if cur_map_flow == "CloseRadarMask" then
-		hide_tracker = hide_tr_cond
-		alt_tracker = is_in_tent
-		hide_moon = true
-		map_moon = false
-		moon_pos = is_in_tent and "rest" or "radar"
-	end
-	
-	if cur_map_flow == "" then
-	
-	end
-	
-	if stage_id == stage_idx.training then
-		if not (map_open or is_in_tent) and previous_hide_radar and not current_hide_radar then
-			menu_open = true
-			delay_timer = delay_timer + dt
-			if delay_timer >= menu_o_delay then
-				previous_hide_radar = current_hide_radar
-				hide_tracker = (dont_show and hide_in_combat) or (only_show and not draw_in_train) or config.hide_w_hud
-				delay_timer = 0
-			end
-		elseif map_open and current_hide_radar and not previous_hide_radar then
-			delay_timer = delay_timer + dt
-			if delay_timer >= map_i_delay then
-				previous_hide_radar = current_hide_radar
-				hide_tracker = (dont_show and hide_in_combat) or (only_show and not draw_in_train)
-				alt_tracker = false
-				map_open = false
-				delay_timer = 0
-			end
-		else
-			previous_hide_radar = current_hide_radar
+	if previous_camp_sit and not current_camp_sit then
+		delay_timer = delay_timer + dt
+		if delay_timer >= camp_i_delay then
+			previous_camp_sit = current_camp_sit
+			delay_timer = 0
 		end
+	else
+		previous_camp_sit = current_camp_sit
 	end
 	
-	if radar_visible then pugee_open = false end
+	local active_quest       = mission_manager:call("get_IsActiveQuest")
+	local quest_end          = mission_manager:call("get_IsQuestEndShowing")
+	local is_in_tent         = character:call("get_IsInAllTent")
+	local in_base_camp       = character:call("get_IsInBaseCamp") and not (is_in_tent or map_open)
+	local in_life_area       = character:call("get_IsInLifeArea") and not (is_in_tent or map_open or in_base_camp)
+	local in_combat          = character:call("get_IsCombat")
+	local half_combat        = character:call("get_IsHalfCombat")
+	local is_bowling         = minigame_manager:get_field("_Bowling"):call("get_IsPlaying")
+	local stage_id           = environment_manager:get_field("_CurrentStage")
+	local in_training        = stage_id == stage_idx.training and not (is_in_tent or map_open)
+	local quest_combat       = active_quest and in_combat
+	local map_open           = (cur_map_flow == "Active" or cur_map_flow == "CloseModel")
+	local radar_open         = (cur_map_flow == "RadarActive" or cur_map_flow == "WaitOpenReq" or cur_map_flow == "CloseRadarModel" or (cur_map_flow == "OpenRadar" and not map_proc)) and not (in_training or previous_arm_wrest)
+	
+	local draw_w_bowling     = is_bowling and radar_open and not config.hide_w_bowling
+	local draw_w_wrestle     = previous_arm_wrest and not config.hide_w_wrestle
+	local draw_at_table      = radar_open and previous_table_sit and not config.hide_at_table
+	local draw_at_camp       = previous_camp_sit and not config.hide_at_camp
+	
+	local dont_show          = config.show_when == "Don't show when:"
+	local hide_in_tent       = is_in_tent and config.hide_in_tent
+	local hide_on_map        = map_open and config.hide_on_map
+	local hide_in_quest      = active_quest and config.hide_in_quest and not config.hide_in_qstcbt
+	local hide_in_combat     = in_combat and config.hide_in_combat and not config.hide_in_qstcbt
+	local hide_in_qstcbt     = quest_combat and config.hide_in_qstcbt
+	local hide_in_hlfcbt     = half_combat and config.hide_in_hlfcbt and (config.hide_in_combat or (active_quest and config.hide_in_qstcbt))
+
+	local only_show          = config.show_when == "Only show when:"
+	local draw_in_tent       = is_in_tent and config.draw_in_tent
+	local draw_on_map        = map_open and config.draw_on_map
+	local draw_in_life       = in_life_area and config.draw_in_life
+	local draw_in_base       = in_base_camp and config.draw_in_base
+	local draw_in_train      = in_training and config.draw_in_train
+
+	local dont_show_hide     = dont_show and (hide_in_tent or hide_on_map or hide_in_quest or hide_in_combat or hide_in_qstcbt or hide_in_hlfcbt)
+	local only_show_hide     = only_show and not (draw_in_tent or draw_on_map or draw_in_life or draw_in_base or draw_in_train)
+	local hide_w_hud         = config.hide_w_hud and not (slider_visible or draw_w_bowling or draw_w_wrestle or draw_at_table or draw_at_camp or is_in_tent or map_open)
+	
+	hide_tracker = dont_show_hide or only_show_hide or hide_w_hud
+	alt_tracker  = map_open or is_in_tent
+	
+	hide_moon    = not ((radar_open and slider_visible) or (map_open and previous_map_intrct) or previous_rest_open)
+	moon_pos     = map_open and "map" or previous_rest_open and "rest" or "radar"
+	
 	if not config.auto_hide then alt_tracker = false end
-	if not config.auto_hide_m then map_moon = false end -- moon_pos = "radar"
+	if not config.auto_hide_m then moon_pos = "radar" end
+	
+	current_map_intrct = false
+	slider_visible = false
 end
 
 local function get_fade()
@@ -938,7 +902,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
             d2d.image(elem.value, xPos, icon_y, drawW, icon_d, alpha)
 			if elem.flag and config.draw_flags then
 				local flagX = xPos - drawW / 2 + margin * 1.5
-				local flagY = alt_tracker and icon_y - margin * 2.1 or icon_y - icon_d / 2 + margin * 1.2 -- is_in_tent
+				local flagY = alt_tracker and icon_y - margin * 2.1 or icon_y - icon_d / 2 + margin * 1.2
 				d2d.image(img.flag, flagX, flagY, drawW, icon_d, alpha)
 			end
             xPos = xPos + elem.measured_width + gap
@@ -947,7 +911,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
 			local bar_w = icon_d * 0.75
 			local bar_h = icon_d / 25
 			local bar_x = xPos - gap - icon_d + (icon_d - bar_w) / 2
-			local bar_y = alt_tracker and y + bar_h * 2 or y + icon_d - bar_h * 0.75 -- is_in_tent
+			local bar_y = alt_tracker and y + bar_h * 2 or y + icon_d - bar_h * 0.75
 			local fill_w = bar_w * progress
 			d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, apply_opacity(color.background, alpha))
 			if elem.flag then
@@ -1173,14 +1137,14 @@ d2d.register(
 
         local tr_opacity    = config.tr_opacity * fade_value
 		local tr_user_scale = config.tr_user_scale
-        local tr_eff_scale  = alt_tracker and screen_scale * tr_user_scale * tent_ui_scale or screen_scale * tr_user_scale -- is_in_tent
+        local tr_eff_scale  = alt_tracker and screen_scale * tr_user_scale * tent_ui_scale or screen_scale * tr_user_scale
         local tr_margin     = base_margin * tr_eff_scale
         local tr_bg_height  = 50 * tr_eff_scale
-        local tr_bg_y       = alt_tracker and 0 or screen_h - tr_bg_height -- is_in_tent
+        local tr_bg_y       = alt_tracker and 0 or screen_h - tr_bg_height
         local tr_bg_color   = apply_opacity(color.background, tr_opacity)
         local tr_icon_d     = tr_bg_height * 1.1
 		local tracker_gap   = 18 * tr_eff_scale
-		local tr_icon_y     = alt_tracker and tr_bg_y + (tr_bg_height - tr_icon_d) / 2 or tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2 -- is_in_tent
+		local tr_icon_y     = alt_tracker and tr_bg_y + (tr_bg_height - tr_icon_d) / 2 or tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2
         local tr_font_size  = math.floor(tr_bg_height - tr_margin * 2)
         local tracker_font  = {
             name   = "Segoe UI",
@@ -1247,7 +1211,7 @@ d2d.register(
         
         local tr_border_h      = base_border_h * tr_eff_scale
         local tr_end_border_w  = base_end_border_w * tr_eff_scale
-        local tr_border_y      = alt_tracker and tr_bg_height - (tr_border_h / 2) or tr_bg_y - (tr_border_h / 2) -- is_in_tent
+        local tr_border_y      = alt_tracker and tr_bg_height - (tr_border_h / 2) or tr_bg_y - (tr_border_h / 2)
         local tr_sect_border_x = tr_end_border_w - (tr_margin / 2)
         local tr_sect_border_w = screen_w - tr_end_border_w - tr_sect_border_x + tr_margin
 		
@@ -1257,11 +1221,11 @@ d2d.register(
 		
 		local moon   = img["moon_" .. tostring(moon_idx)]
 		local m_num  = img["m_num_" .. tostring(moon_idx)]
-		local moon_x = (moon_pos == "map" and 16 or moon_pos == "rest" and 4 or 4) * screen_scale -- (map_moon and 16 or 4) * screen_scale
-		local moon_y = (moon_pos == "map" and 202 or moon_pos == "rest" and 1722 or 1922) * screen_scale -- (map_moon and 202 or 1922) * screen_scale
+		local moon_x = (moon_pos == "map" and 16 or moon_pos == "rest" and 4 or 4) * screen_scale
+		local moon_y = (moon_pos == "map" and 202 or moon_pos == "rest" and 1722 or 1922) * screen_scale
 		local moon_w = 140 * screen_scale
 		local moon_h = 140 * screen_scale
-		local moon_a = (map_moon and 0.9 or 1) * fade_value_m
+		local moon_a = (moon_pos == "map" and 0.9 or 1) * fade_value_m
 
         -------------------------------------------------------------------
         -- DRAWS
@@ -1366,7 +1330,8 @@ re.on_draw_ui(
 					local hwh_checkboxes = {
 						{ "Hide while bowling",       "hide_w_bowling" },
 						{ "Hide while arm wrestling", "hide_w_wrestle" },
-						{ "Hide at hub tables",       "hide_at_table"  }
+						{ "Hide at hub tables",       "hide_at_table"  },
+						{ "Hide at camp gear",        "hide_at_camp"    }
 					}
 					if config.hide_w_hud then
 						imgui.indent(indent_w)
@@ -1520,9 +1485,8 @@ re.on_draw_ui(
 		
 		-- if imgui.tree_node("Tracker Data DELETE ME") then
 			-- imgui.text("arm wrestling: " .. tostring(is_active_situation("arm_wrestling")))
-			-- imgui.text("table sitting: " .. tostring(is_active_situation("table_sitting")))
+			-- imgui.text("table sitting: " .. tostring(current_table_sit))
 			-- imgui.text("map open: " .. tostring(map_open))
-			-- imgui.text("menu open: " .. tostring(menu_open))
 			-- imgui.text("hide tracker: " .. tostring(hide_tracker))
 			-- imgui.text("hide moon: " .. tostring(hide_moon))
 			-- imgui.text("fade: " .. tostring(fade_value))
@@ -1530,6 +1494,9 @@ re.on_draw_ui(
 			-- imgui.text("current hidden: " .. tostring(fade_manager:call("get_IsVisibleStateAny")))
 			-- imgui.text("previous fading: " .. tostring(previous_fading))
 			-- imgui.text("current fading: " .. tostring(fade_manager:call("get_IsFadingAny")))
+			-- imgui.text("map flow: " .. tostring(map_flow_check))
+			-- imgui.text("slider visible: " .. tostring(slider_check))
+			-- imgui.text("campfire sitting: " .. tostring(campfire_check))
 			-- imgui.tree_pop()
 		-- end
 		
