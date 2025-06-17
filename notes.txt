@@ -1,8 +1,8 @@
 
-lucky voucher tracker
 system clock
-wishlist tracker
+lucky voucher tracker
 ancient wyvern coins in hub, probably a gimmick
+wishlist tracker
 ship/trades ticker
  - reposition ticker in tent
 moon position for non-16:9

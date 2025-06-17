@@ -11,6 +11,7 @@ local hide_tracker        = false
 local alt_tracker         = false
 local hide_moon           = false
 local moon_pos            = "radar"
+local hide_clock          = false
 local map_open            = false
 local map_proc            = false
 local slider_visible      = false
@@ -30,6 +31,7 @@ local dt                  = 0
 local fade                = 0
 local fade_value          = 0
 local fade_value_m        = 0
+local fade_value_c        = 0
 local delay_timer         = 0
 local in_delay            = 0.15
 local in_speed            = 1
@@ -220,6 +222,7 @@ local config = {
     countdown 	     = 3,
 	tr_hotkey        = "None",
 	mo_hotkey        = "None",
+	ck_hotkey        = "None",
     draw_ticker      = false,
 	draw_tracker     = true,
 	draw_bars        = true,
@@ -252,6 +255,8 @@ local config = {
 	draw_moon        = true,
 	draw_m_num       = false,
 	auto_hide_m      = true,
+	draw_clock       = true,
+	auto_hide_c      = true,
 	box_datas	     = {
 		Rations   = { size = 10, timer = 600 },
 		Shares    = { size = 100 },
@@ -300,12 +305,14 @@ end
 
 local hotkey_listening = {
 	tr_hotkey = false,
-	mo_hotkey = false
+	mo_hotkey = false,
+	ck_hotkey = false
 }
 
 local hotkey_messages  = {
 	tr_hotkey = config.tr_hotkey or "None",
-	mo_hotkey = config.mo_hotkey or "None"
+	mo_hotkey = config.mo_hotkey or "None",
+	ck_hotkey = config.ck_hotkey or "None"
 }
 
 local function get_new_hotkey(hotkey)
@@ -586,6 +593,7 @@ local function get_fade()
 	
 	fade_value = config.auto_hide and fade or 1
 	fade_value_m = config.auto_hide_m and fade or 1
+	fade_value_c = config.auto_hide_c and fade or 1
 end
 
 -- === Facility helper functions ===
@@ -997,6 +1005,7 @@ d2d.register(
         color.background  = 0x882E2810   -- Semi-transparent dark tan
         color.text        = 0xFFFFFFFF   -- White
         color.timer_text  = 0xFFFCFFA6   -- Light Yellow
+		color.clock_text  = 0xFFF4DB8A   -- yellow (temp)
 		color.yellow_text = 0xFFF4DB8A   -- Yellow
         color.red_text    = 0xFFFF0000   -- Red
         color.prog_bar    = 0xFF00FF00   -- Green
@@ -1126,7 +1135,7 @@ d2d.register(
         local ticker_txt_y = ti_bg_y + ti_bg_height - ref_char_h - ti_margin
         
         local ti_border_h      = base_border_h * 0.56 * ti_eff_scale
-        local ti_end_border_w  = base_end_border_w * ti_eff_scale
+        local ti_end_border_w  = base_end_border_w * 0.56 * ti_eff_scale
         local ti_border_y      = ti_bg_y + ti_bg_height - (ti_border_h / 2)
         local ti_sect_border_x = ti_end_border_w - (ti_margin / 2)
         local ti_sect_border_w = screen_w - ti_end_border_w - ti_sect_border_x + ti_margin
@@ -1227,6 +1236,27 @@ d2d.register(
 		local moon_h = 140 * screen_scale
 		local moon_a = (moon_pos == "map" and 0.9 or 1) * fade_value_m
 
+		-------------------------------------------------------------------
+		-- System Clock
+		-------------------------------------------------------------------
+		
+		local clock_text       = "placeholder"
+		local ck_margin        = alt_tracker and tr_margin or ti_margin
+		local clock_font_size  = alt_tracker and tracker_font.size or ticker_font.size
+		local clock_font       = d2d.Font.new("Segoe UI", clock_font_size, true, false)
+		local clock_txt_w      = clock_font:measure(clock_text)
+		local clock_txt_x      = screen_w - clock_txt_w - ck_margin
+		local clock_txt_y      = alt_tracker and tracker_txt_y or ticker_txt_y
+		local ck_text_color    = apply_opacity(color.clock_text, fade_value_c)
+		local ck_bg_w          = clock_txt_w + 2 * ck_margin
+		local ck_bg_h          = alt_tracker and tr_bg_height or ti_bg_height
+		local ck_bg_x          = screen_w - ck_bg_w
+		local ck_bg_color      = apply_opacity(color.background, fade_value_c)
+		local ck_end_border_w  = alt_tracker and tr_end_border_w or ti_end_border_w
+		local ck_border_y      = alt_tracker and tr_border_y or ti_border_y
+		local ck_border_h      = alt_tracker and tr_border_h or ti_border_h
+		local ck_sect_border_w = ck_bg_w - ck_end_border_w
+
         -------------------------------------------------------------------
         -- DRAWS
         -------------------------------------------------------------------
@@ -1265,6 +1295,16 @@ d2d.register(
 			if config.draw_m_num then
 				d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, moon_a)
 			end
+		end
+		
+		-- Draw the clock
+		if config.draw_clock and not (config.auto_hide_c and hide_clock) then
+			d2d.fill_rect(ck_bg_x, 0, ck_bg_w, ck_bg_h, ck_bg_color)
+			d2d.image(img.border_right, screen_w - ck_end_border_w, ck_border_y, ck_end_border_w, ck_border_h, fade_value_c)
+			if ck_sect_border_w > 0 then
+				d2d.image(img.border_section, ck_bg_x, ck_border_y, ck_sect_border_w, ck_border_h, fade_value_c)
+			end
+			d2d.text(clock_font, clock_text, clock_txt_x, clock_txt_y, ck_text_color)
 		end
     end
 )
@@ -1479,6 +1519,44 @@ re.on_draw_ui(
 				imgui.separator()
 				
 				imgui.end_disabled()
+			
+			imgui.tree_pop()
+		end
+		
+		if imgui.tree_node("System Clock") then
+			local changed_draw, draw = imgui.checkbox("Display Clock", config.draw_clock)
+			if changed_draw then config.draw_clock = draw; save_config() end
+			imgui.same_line()
+			
+			local cursor_pos1 = imgui.get_cursor_pos()
+			imgui.set_cursor_pos(Vector2f.new(button_x, cursor_pos1.y))
+			if imgui.button("Hotkey", Vector2f.new(button_w, button_h)) then
+				hotkey_listening.ck_hotkey = true
+				hotkey_messages.ck_hotkey = "press a key..."
+			end
+			if hotkey_listening.ck_hotkey then get_new_hotkey("ck_hotkey") end
+			imgui.same_line()
+			imgui.text(hotkey_messages.ck_hotkey)
+			
+			imgui.separator()
+			
+				imgui.begin_disabled(not config.draw_clock)
+				
+				local checkboxes = {
+					{ "Automatic Hiding", "auto_hide_c"  }
+				}
+				for _, cb in ipairs(checkboxes) do
+					local label, key = cb[1], cb[2]
+					local changedBox, newVal = imgui.checkbox(label, config[key])
+					if changedBox then
+						config[key] = newVal
+						save_config()
+					end
+				end
+				imgui.separator()
+				
+				imgui.end_disabled()
+			
 			
 			imgui.tree_pop()
 		end
