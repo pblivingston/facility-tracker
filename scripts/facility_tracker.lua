@@ -1,8 +1,9 @@
-local re    = re
-local sdk   = sdk
-local d2d   = d2d
-local json  = json
-local imgui = imgui
+local re          = re
+local sdk         = sdk
+local d2d         = d2d
+local json        = json
+local imgui       = imgui
+local reframework = reframework
 
 local captured_args       = nil
 local character           = nil
@@ -10,6 +11,8 @@ local first_run           = false
 local hide_tracker        = false
 local alt_tracker         = false
 local hide_moon           = false
+local ghub_moon           = false
+local quest_moon          = false
 local moon_pos            = "radar"
 local hide_clock          = false
 local map_open            = false
@@ -32,6 +35,7 @@ local fade                = 0
 local fade_value          = 0
 local fade_value_m        = 0
 local fade_value_c        = 0
+local fade_value_v        = 0
 local delay_timer         = 0
 local in_delay            = 0.15
 local in_speed            = 1
@@ -43,8 +47,8 @@ local table_i_delay       = 0.05
 local wrestle_i_delay     = 1.75
 local rest_io_delay       = 0.18
 local camp_i_delay        = 0.05
-local moon_idx            = nil
-local stage_idx           = {
+
+local stage_idx = {
 	plains   = 0,
 	forest   = 1,
 	basin    = 2,
@@ -97,7 +101,82 @@ local tent_ui_scale    = 0.88
 local color            = {}
 local img              = {}
 
-local imgui_keys = {
+local config_path = "facility_tracker.json"
+local config      = {
+	tr_hotkey        = "None",
+	ti_hotkey        = "None",
+	vo_hotkey        = "None",
+	ck_hotkey        = "None",
+	mo_hotkey        = "None",
+	draw_tracker     = true,
+	draw_bars        = true,
+    draw_timers      = false,
+	draw_flags       = true,
+	old_icons        = true,
+	auto_hide        = true,
+	hide_w_hud       = true,
+	hide_w_bowling   = false,
+	hide_w_wrestle   = false,
+	hide_at_table    = false,
+	hide_at_camp     = false,
+	show_when        = "Don't show when:",
+	hide_in_tent     = false,
+	hide_on_map      = false,
+	hide_in_quest    = false,
+	hide_in_combat   = false,
+	hide_in_qstcbt   = false,
+	hide_in_hlfcbt   = false,
+	draw_in_tent     = true,
+	draw_on_map      = true,
+	draw_in_life     = true,
+	draw_in_base     = true,
+	draw_in_train    = false,
+    draw_ticker      = false,
+	draw_ship        = true,
+	draw_trades      = true,
+	auto_hide_t      = true,
+	draw_voucher     = true,
+	auto_hide_v      = true,
+	draw_moon        = true,
+	draw_m_num       = false,
+	ghub_moon        = "Hub moon",
+	auto_hide_m      = true,
+	draw_clock       = true,
+	auto_hide_c      = true,
+	non_meridian_c   = false,
+    tr_user_scale    = 1.0,
+    tr_opacity       = 1.0,
+    ti_speed_scale   = 1.0,
+    ti_user_scale    = 1.0,
+    ti_opacity       = 1.0,
+	vo_opacity       = 1.0,
+	ck_opacity       = 1.0,
+    countdown 	     = 3,
+	box_datas	     = {
+		Rations   = { size = 10, timer = 600 },
+		Shares    = { size = 100 },
+		Nest      = { count = 0, size = 5, timer = 1200 },
+		pugee     = { timer = 2520 },
+		retrieval = { full = false },
+		Rysher    = { count = 0, size = 16 },
+		Murtabak  = { count = 0, size = 16 },
+		Apar      = { count = 0, size = 16 },
+		Plumpeach = { count = 0, size = 16 },
+		Sabar     = { count = 0, size = 16 }
+	}
+}
+
+local hotkeys = {
+	["tr_hotkey"] = { message = config.tr_hotkey or "None", listening = false, draw = "draw_tracker" },
+	["ti_hotkey"] = { message = config.ti_hotkey or "None", listening = false, draw = "draw_ticker"  },
+	["vo_hotkey"] = { message = config.vo_hotkey or "None", listening = false, draw = "draw_voucher" },
+	["ck_hotkey"] = { message = config.ck_hotkey or "None", listening = false, draw = "draw_clock"   },
+	["mo_hotkey"] = { message = config.mo_hotkey or "None", listening = false, draw = "draw_moon"    }
+}
+
+local config_window = false
+local re_ui         = {}
+local imgui_keys    = {
     ["Tab"] = 512,
     ["LeftArrow"] = 513,
     ["RightArrow"] = 514,
@@ -217,59 +296,7 @@ local imgui_keys = {
     ["KeypadEqual"] = 628
 }
 
-local config_path = "facility_tracker.json"
-local config = {
-    countdown 	     = 3,
-	tr_hotkey        = "None",
-	mo_hotkey        = "None",
-	ck_hotkey        = "None",
-    draw_ticker      = false,
-	draw_tracker     = true,
-	draw_bars        = true,
-    draw_timers      = false,
-	draw_flags       = true,
-	old_icons        = true,
-	auto_hide        = true,
-	hide_w_hud       = true,
-	hide_w_bowling   = false,
-	hide_w_wrestle   = false,
-	hide_at_table    = false,
-	hide_at_camp     = false,
-	show_when        = "Don't show when:",
-	hide_in_tent     = false,
-	hide_on_map      = false,
-	hide_in_quest    = false,
-	hide_in_combat   = false,
-	hide_in_qstcbt   = false,
-	hide_in_hlfcbt   = false,
-	draw_in_tent     = true,
-	draw_on_map      = true,
-	draw_in_life     = true,
-	draw_in_base     = true,
-	draw_in_train    = false,
-    ti_user_scale    = 1.0,
-    ti_speed_scale   = 1.0,
-    ti_opacity       = 1.0,
-    tr_user_scale    = 1.0,
-    tr_opacity       = 1.0,
-	draw_moon        = true,
-	draw_m_num       = false,
-	auto_hide_m      = true,
-	draw_clock       = true,
-	auto_hide_c      = true,
-	box_datas	     = {
-		Rations   = { size = 10, timer = 600 },
-		Shares    = { size = 100 },
-		Nest      = { count = 0, size = 5, timer = 1200 },
-		pugee     = { timer = 2520 },
-		retrieval = { full = false },
-		Rysher    = { count = 0, size = 16 },
-		Murtabak  = { count = 0, size = 16 },
-		Apar      = { count = 0, size = 16 },
-		Plumpeach = { count = 0, size = 16 },
-		Sabar     = { count = 0, size = 16 }
-	}
-}
+-- === Config ===
 
 local function load_config()
     local loaded_config = json.load_file(config_path)
@@ -303,29 +330,270 @@ local function get_index(indexed_table, value)
 	return nil
 end
 
-local hotkey_listening = {
-	tr_hotkey = false,
-	mo_hotkey = false,
-	ck_hotkey = false
-}
-
-local hotkey_messages  = {
-	tr_hotkey = config.tr_hotkey or "None",
-	mo_hotkey = config.mo_hotkey or "None",
-	ck_hotkey = config.ck_hotkey or "None"
-}
+-- === Hotkeys ===
 
 local function get_new_hotkey(hotkey)
 	for key_name, key_index in pairs(imgui_keys) do
 		if imgui.is_key_pressed(key_index) then
 			config[hotkey] = key_name
-			hotkey_messages[hotkey] = key_name
-			hotkey_listening[hotkey] = false
+			hotkeys[hotkey].message = key_name
+			hotkeys[hotkey].listening = false
 			save_config()
 			break
 		end
 	end
 end
+
+local function hotkey_toggle()
+	for hk_name, hk_data in pairs(hotkeys) do
+		local hotkey = config[hk_name]
+		if imgui.is_key_pressed(imgui_keys[hotkey]) and hotkey ~= "None" then
+			config[hk_data.draw] = not config[hk_data.draw]
+			save_config()
+		end
+	end
+end
+
+-- === Config Window ===
+
+local function re_ui_main(label, setting, hotkey)
+	local dVal, newVal = imgui.checkbox(label, config[setting])
+	if dVal then config[setting] = newVal; save_config() end
+	imgui.same_line()
+	
+	local cursor_pos = imgui.get_cursor_pos()
+	imgui.set_cursor_pos(Vector2f.new(re_ui.button_x, cursor_pos.y))
+	if imgui.button("Hotkey", Vector2f.new(re_ui.button_w, re_ui.button_h)) then
+		hotkeys[hotkey].listening = true
+		hotkeys[hotkey].message = "press a key..."
+	end
+	if hotkeys[hotkey].listening then get_new_hotkey(hotkey) end
+	imgui.same_line()
+	imgui.text(hotkeys[hotkey].message)
+end
+
+local function re_ui_checkbox(label, setting)
+	local dCheck, check = imgui.checkbox(label, config[setting])
+	if dCheck then config[setting] = check; save_config() end
+end
+
+local function re_ui_checkboxes(checkboxes)
+	for _, cb in ipairs(checkboxes) do
+		local label, key = cb[1], cb[2]
+		local dVal, newVal = imgui.checkbox(label, config[key])
+		if dVal then
+			config[key] = newVal
+			save_config()
+		end
+	end
+end
+
+local function re_ui_slider(label, setting, low, high)
+	imgui.text(label .. ":")
+	imgui.same_line()
+	
+	local cursor_pos = imgui.get_cursor_pos()
+	imgui.set_cursor_pos(Vector2f.new(re_ui.txtbox_x, cursor_pos.y))
+	imgui.push_item_width(re_ui.txtbox_w)
+	local txt_label = string.format(" (%.1f to %.1f)", low, high)
+	local dTxt, txt_string, _, _ = imgui.input_text(txt_label, config[setting])
+	local txt = math.min(high, math.max(low, tonumber(txt_string) or 1))
+	if dTxt then config[setting] = txt; save_config() end
+	imgui.pop_item_width()
+	
+	local sld_label = "##" .. setting
+	local dSld, sld = imgui.slider_float(sld_label, config[setting], low, high)
+	if dSld then config[setting] = sld; save_config() end
+end
+
+local function draw_config()
+	imgui.set_next_window_size(Vector2f.new(325, 500), 1 << 1)
+	if imgui.begin_window("Facility Tracker and UI Extensions", true) then
+		re_ui.font_size = imgui.get_default_font_size()
+		re_ui.window_w = imgui.calc_item_width()
+		re_ui.txtbox_w = re_ui.font_size * 2.5
+		re_ui.txtbox_x = re_ui.window_w - re_ui.txtbox_w + 23
+		re_ui.button_w = re_ui.font_size * 2.79 + 6
+		re_ui.button_h = re_ui.font_size + 6
+		re_ui.button_x = re_ui.window_w - re_ui.button_w + 23
+		re_ui.indent_w = re_ui.font_size + 3
+
+		if imgui.tree_node("Facility Tracker") then
+			re_ui_main("Display Tracker", "draw_tracker", "tr_hotkey")
+			imgui.separator()
+				imgui.begin_disabled(not config.draw_tracker)
+				local checkboxes = {
+					{ "Progress Bars",     "draw_bars"   },
+					{ "Timers",            "draw_timers" },
+					{ "Flags",             "draw_flags"  },
+					{ "Old Village Icons", "old_icons"   },
+					{ "Automatic Hiding",  "auto_hide"   }
+				}
+				re_ui_checkboxes(checkboxes)
+				imgui.separator()
+				re_ui_slider("Tracker Scale", "tr_user_scale", 0.0, 2.0)
+				re_ui_slider("Tracker Opacity", "tr_opacity", 0.0, 1.0)
+				imgui.separator()
+				imgui.end_disabled()
+			imgui.tree_pop()
+		end
+		
+		if imgui.tree_node("Trades Ticker") then
+			re_ui_main("Display Ticker", "draw_ticker", "ti_hotkey")
+			imgui.separator()
+				imgui.begin_disabled(not config.draw_ticker)
+				local checkboxes = {
+					{ "Include Ship",     "draw_ship"   },
+					{ "Include Trades",   "draw_trades" },
+					{ "Automatic Hiding", "auto_hide_t" }
+				}
+				re_ui_checkboxes(checkboxes)
+				imgui.separator()
+				re_ui_slider("Ticker Speed", "ti_speed_scale", 0.1, 3.0)
+				re_ui_slider("Ticker Scale", "ti_user_scale", 0.0, 2.0)
+				re_ui_slider("Ticker Opacity", "ti_opacity", 0.0, 1.0)
+				imgui.separator()
+				imgui.end_disabled()
+			imgui.tree_pop()
+		end
+		
+		if imgui.tree_node("Voucher Tracker") then
+			re_ui_main("Display Vouchers", "draw_voucher", "vo_hotkey")
+			imgui.separator()
+				imgui.begin_disabled(not config.draw_voucher)
+				local checkboxes = {
+					{ "Automatic Hiding", "auto_hide_c"    }
+				}
+				re_ui_checkboxes(checkboxes)
+				imgui.separator()
+				re_ui_slider("Voucher Scale", "ti_user_scale", 0.0, 2.0)
+				re_ui_slider("Voucher Opacity", "vo_opacity", 0.0, 1.0)
+				imgui.separator()
+				imgui.end_disabled()
+			imgui.tree_pop()
+		end
+		
+		if imgui.tree_node("System Clock") then
+			re_ui_main("Display Clock", "draw_clock", "ck_hotkey")
+			imgui.separator()
+				imgui.begin_disabled(not config.draw_clock)
+				local checkboxes = {
+					{ "24-hour Clock",    "non_meridian_c" },
+					{ "Automatic Hiding", "auto_hide_c"    }
+				}
+				re_ui_checkboxes(checkboxes)
+				imgui.separator()
+				re_ui_slider("Clock Scale", "ti_user_scale", 0.0, 2.0)
+				re_ui_slider("Clock Opacity", "ck_opacity", 0.0, 1.0)
+				imgui.separator()
+				imgui.end_disabled()
+			imgui.tree_pop()
+		end
+		
+		if imgui.tree_node("Automatic Hiding Options") then
+			re_ui_checkbox("Hide with HUD", "hide_w_hud")
+				imgui.begin_disabled(not config.hide_w_hud)
+					imgui.indent(re_ui.indent_w)
+					imgui.text("Partial HUD Options:")
+					local hwh_checkboxes = {
+						{ "Hide while bowling",       "hide_w_bowling" },
+						{ "Hide while arm wrestling", "hide_w_wrestle" },
+						{ "Hide at hub tables",       "hide_at_table"  },
+						{ "Hide at camp gear",        "hide_at_camp"   }
+					}
+					re_ui_checkboxes(hwh_checkboxes)
+					imgui.unindent(re_ui.indent_w)
+				imgui.end_disabled()
+			imgui.text("")
+			local show_when = {
+				"Don't show when:",
+				"Only show when:"
+			}
+			local show_index = get_index(show_when, config.show_when)
+			imgui.push_item_width(re_ui.font_size * 8.5)
+			local changed_idx, index = imgui.combo("##show_when", show_index, show_when)
+			if changed_idx then config.show_when = show_when[index]; save_config() end
+			imgui.pop_item_width()
+				imgui.indent(re_ui.indent_w)
+				if config.show_when == "Don't show when:" then
+					re_ui_checkbox("in a tent", "hide_in_tent")
+					re_ui_checkbox("viewing the map", "hide_on_map")
+						imgui.begin_disabled(config.hide_in_qstcbt)
+						re_ui_checkbox("in a quest", "hide_in_quest")
+						re_ui_checkbox("in any combat", "hide_in_combat")
+						imgui.end_disabled()
+					re_ui_checkbox("in quest combat (exclusive)", "hide_in_qstcbt")
+						imgui.begin_disabled(not (config.hide_in_combat or config.hide_in_qstcbt))
+						re_ui_checkbox("monster is searching (post-combat)", "hide_in_hlfcbt")
+						imgui.end_disabled()
+				end
+				if config.show_when == "Only show when:" then
+					local only_checkboxes = {
+						{ "in a tent",            "draw_in_tent"  },
+						{ "viewing the map",      "draw_on_map"   },
+						{ "in a village",         "draw_in_life"  },
+						{ "in a base camp",       "draw_in_base"  },
+						{ "in the training area", "draw_in_train" }
+					}
+					re_ui_checkboxes(only_checkboxes)
+				end
+				imgui.unindent(re_ui.indent_w)
+			imgui.separator()
+			imgui.tree_pop()
+		end
+		
+		if imgui.tree_node("Moon Phase Tracker") then
+			re_ui_main("Display Moon Phase", "draw_moon", "mo_hotkey")
+			imgui.separator()
+				imgui.begin_disabled(not config.draw_moon)
+				imgui.text("In Grand Hub show:")
+					imgui.indent(re_ui.indent_w)
+					local hub_show = {
+						"Hub moon",
+						"Main moon",
+						"Nothing"
+					}
+					local show_index = get_index(hub_show, config.ghub_moon)
+					imgui.push_item_width(re_ui.font_size * 6)
+					local changed_idx, index = imgui.combo("##ghub_moon", show_index, hub_show)
+					if changed_idx then config.ghub_moon = hub_show[index]; save_config() end
+					imgui.pop_item_width()
+					imgui.unindent(re_ui.indent_w)
+				imgui.text("")
+				local checkboxes = {
+					{ "Show Numerals",    "draw_m_num"  },
+					{ "Automatic Hiding", "auto_hide_m" }
+				}
+				re_ui_checkboxes(checkboxes)
+					imgui.indent(re_ui.indent_w)
+					imgui.text("(Hides with Time & Season)")
+					imgui.unindent(re_ui.indent_w)
+				imgui.separator()
+				imgui.end_disabled()
+			imgui.tree_pop()
+		end
+		
+		-- if imgui.tree_node("Tracker Data DELETE ME") then
+			-- imgui.text("arm wrestling: " .. tostring(is_active_situation("arm_wrestling")))
+			-- imgui.text("table sitting: " .. tostring(current_table_sit))
+			-- imgui.text("map open: " .. tostring(map_open))
+			-- imgui.text("hide tracker: " .. tostring(hide_tracker))
+			-- imgui.text("hide moon: " .. tostring(hide_moon))
+			-- imgui.text("fade: " .. tostring(fade_value))
+			-- imgui.text("previous hidden: " .. tostring(previous_hidden))
+			-- imgui.text("current hidden: " .. tostring(fade_manager:call("get_IsVisibleStateAny")))
+			-- imgui.text("previous fading: " .. tostring(previous_fading))
+			-- imgui.text("current fading: " .. tostring(fade_manager:call("get_IsFadingAny")))
+			-- imgui.tree_pop()
+		-- end
+		
+		imgui.end_window()
+	else
+		config_window = false
+	end
+end
+
+-- === Main objects ===
 
 local facility_manager    = sdk.get_managed_singleton("app.FacilityManager")
 local environment_manager = sdk.get_managed_singleton("app.EnvironmentManager")
@@ -346,17 +614,21 @@ local function is_active_player()
 	end
 	character = character_result
 	
-	local moon_cont_success, moon_controller = pcall(function() return environment_manager:get_field("_MoonController") end)
-	if not (moon_cont_success and moon_controller) then
-		return false
-	end
-	local moon_data_success, active_moon_data = pcall(function() return moon_controller:get_field("_MainData") end)
-	if not (moon_data_success and active_moon_data) then
-		return false
-	end
-	moon_idx = active_moon_data:call("get_MoonIdx")
-	
 	return true
+end
+
+-- === Hide/Fade ===
+
+local function get_midx()
+	local moon_cont_success, moon_controller = pcall(function() return environment_manager:get_field("_MoonController") end)
+	if not moon_cont_success then return end
+	local moon_data_success, main_moon_data = pcall(function() return moon_controller:get_field("_MainData") end)
+	local lmoon_data_success, lobby_moon_data = pcall(function() return moon_controller:get_field("_LobbyData") end)
+	local qmoon_data_success, quest_moon_data = pcall(function() return moon_controller:get_field("_QuestData") end)
+	local moon_idx = moon_data_success and main_moon_data:call("get_MoonIdx")
+	local hubm_idx = lmoon_data_success and lobby_moon_data:call("get_MoonIdx")
+	local qstm_idx = qmoon_data_success and quest_moon_data:call("get_MoonIdx")
+	return quest_moon and qstm_idx or (ghub_moon and config.ghub_moon == "Hub moon") and hubm_idx or moon_idx
 end
 
 local function is_active_situation(situation)
@@ -545,6 +817,8 @@ local function get_hidden()
 	
 	hide_moon    = not ((radar_open and slider_visible) or (map_open and previous_map_intrct) or previous_rest_open)
 	moon_pos     = map_open and "map" or previous_rest_open and "rest" or "radar"
+	ghub_moon    = stage_id == stage_idx.g_hub
+	quest_moon   = active_quest
 	
 	if not config.auto_hide then alt_tracker = false end
 	if not config.auto_hide_m then moon_pos = "radar" end
@@ -592,8 +866,9 @@ local function get_fade()
 	end
 	
 	fade_value = config.auto_hide and fade or 1
-	fade_value_m = config.auto_hide_m and fade or 1
+	fade_value_v = config.auto_hide_v and fade or 1
 	fade_value_c = config.auto_hide_c and fade or 1
+	fade_value_m = config.auto_hide_m and fade or 1
 end
 
 -- === Facility helper functions ===
@@ -864,6 +1139,51 @@ local function apply_opacity(argb, opacity)
     return (new_a << 24) | rgb
 end
 
+local function drawRectAlphaGradient(direction, offset, negative, element, pos_x, pos_y, width, height, alpha)
+    local is_vertical = (direction == "up" or direction == "down")
+    local is_reverse = (direction == "up" or direction == "left")
+    local rect_len = is_vertical and height or width
+    local neg = negative / (rect_len - 1)
+    alpha = alpha or 1
+
+    local is_color = type(element) == "number" and element >= 0 and element <= 0xFFFFFFFF
+	
+    local is_img = false
+	if not is_color then	
+		for _,v in pairs(img) do
+			if v == element then is_img = true break end
+		end
+	end
+
+    if not (is_color or is_img) then
+        print("drawRectAlphaGradient error: element is not a color or an image!")
+        return
+    end
+
+    for i = 0, rect_len - 1 do
+        local frac = i / (rect_len - 1)
+        if is_reverse then frac = 1 - frac end
+        local grad_frac = (frac - offset) / (1 - offset)
+        local grad_opacity = frac < neg and 0 or frac < offset and 1 or 1 - grad_frac^2 / (2 * (grad_frac^2 - grad_frac) + 1)
+
+        if is_color then
+            local line_color = apply_opacity(element, grad_opacity)
+            if is_vertical then
+                d2d.line(pos_x, pos_y + i, pos_x + width, pos_y + i, 1.2, line_color)
+            else
+                d2d.line(pos_x + i, pos_y, pos_x + i, pos_y + height, 1.2, line_color)
+            end
+        elseif is_img then
+            local img_opacity = grad_opacity * alpha
+            if is_vertical then
+                d2d.image(element, pos_x, pos_y + i, width, 1, img_opacity)
+            else
+                d2d.image(element, pos_x + i, pos_y, 1, height, img_opacity)
+            end
+        end
+    end
+end
+
 local function measureElements(font, elements, gap, scale_elements)
     local totalWidth = 0
     local text_font = d2d.Font.new(font.name, font.size, font.bold, font.italic)
@@ -893,7 +1213,7 @@ local function measureElements(font, elements, gap, scale_elements)
     return totalWidth - gap
 end
 
-local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, margin, color, alpha, scale_elements)
+local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, margin, alpha, scale_elements)
     local xPos = start_x
     local text_font = d2d.Font.new(font.name, font.size, font.bold, font.italic)
     local timer_font = d2d.Font.new(font.name, font.size * timer_scale, font.bold, font.italic)
@@ -910,7 +1230,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
             d2d.image(elem.value, xPos, icon_y, drawW, icon_d, alpha)
 			if elem.flag and config.draw_flags then
 				local flagX = xPos - drawW / 2 + margin * 1.5
-				local flagY = alt_tracker and icon_y - margin * 2.1 or icon_y - icon_d / 2 + margin * 1.2
+				local flagY = elem.alt_flag and icon_y - margin * 2.1 or icon_y - icon_d / 2 + margin * 1.2
 				d2d.image(img.flag, flagX, flagY, drawW, icon_d, alpha)
 			end
             xPos = xPos + elem.measured_width + gap
@@ -947,7 +1267,7 @@ local function drawElements(font, elements, start_x, y, icon_d, icon_y, gap, mar
 			local table_icon_d = icon_d * table_scale
             local table_icon_y = icon_y + (icon_d - table_icon_d) * 5/8
             local table_gap = gap * table_scale
-            xPos = drawElements(table_font, elem.value, xPos, table_y, table_icon_d, table_icon_y, table_gap, margin, color, alpha, true)
+            xPos = drawElements(table_font, elem.value, xPos, table_y, table_icon_d, table_icon_y, table_gap, margin, alpha, true)
         end
     end
     return xPos
@@ -959,19 +1279,15 @@ end
 
 re.on_frame(
     function()
+		-- print("starting on-frame updates!")
+		
         local current_time = os.clock()
         dt = current_time - previous_time
         previous_time = current_time
 		
-		if imgui.is_key_pressed(imgui_keys[config.tr_hotkey]) and config.tr_hotkey ~= "None" then
-			config.draw_tracker = not config.draw_tracker
-			save_config()
-		end
-		
-		if imgui.is_key_pressed(imgui_keys[config.mo_hotkey]) and config.mo_hotkey ~= "None" then
-			config.draw_moon = not config.draw_moon
-			save_config()
-		end
+		local re_ui_open = reframework:is_drawing_ui()
+		if config_window and re_ui_open then draw_config() end
+		hotkey_toggle()
 		
         if not is_active_player() then
             first_run = true
@@ -981,7 +1297,7 @@ re.on_frame(
             return
         end
 		
-		-- print("starting on-frame updates!")
+		-- print("starting active-player updates!")
 		
 		get_fade()
 		get_hidden()
@@ -996,6 +1312,18 @@ re.on_frame(
     end
 )
 
+----------------------------------------------------------------
+-- CONFIG MENU
+----------------------------------------------------------------
+
+re.on_draw_ui(
+	function()
+		if imgui.button("Facility Tracker and UI Extensions") then
+			config_window = true 
+		end
+	end
+)
+
 -----------------------------------------------------------
 -- REGISTER DRAW
 -----------------------------------------------------------
@@ -1005,8 +1333,7 @@ d2d.register(
         color.background  = 0x882E2810   -- Semi-transparent dark tan
         color.text        = 0xFFFFFFFF   -- White
         color.timer_text  = 0xFFFCFFA6   -- Light Yellow
-		color.clock_text  = 0xFFF4DB8A   -- yellow (temp)
-		color.yellow_text = 0xFFF4DB8A   -- Yellow
+		color.clock_text  = 0xFFF4DB8A   -- Yellow
         color.red_text    = 0xFFFF0000   -- Red
         color.prog_bar    = 0xFF00FF00   -- Green
         color.full_bar    = 0xFFE6B00B   -- Orange-yellow
@@ -1066,6 +1393,91 @@ d2d.register(
         local base_margin        = 4
         local base_border_h      = 40
         local base_end_border_w  = 34
+		
+        -------------------------------------------------------------------
+        -- Factilities Tracker
+        -------------------------------------------------------------------
+
+        local tr_opacity    = config.tr_opacity * fade_value
+		local tr_user_scale = config.tr_user_scale
+        local tr_eff_scale  = alt_tracker and screen_scale * tr_user_scale * tent_ui_scale or screen_scale * tr_user_scale
+        local tr_margin     = base_margin * tr_eff_scale
+        local tr_bg_height  = 50 * tr_eff_scale
+        local tr_bg_y       = alt_tracker and 0 or screen_h - tr_bg_height
+        local tr_bg_color   = apply_opacity(color.background, tr_opacity)
+        local tr_icon_d     = tr_bg_height * 1.1
+		local tracker_gap   = 18 * tr_eff_scale
+		local tr_icon_y     = alt_tracker and tr_bg_y + (tr_bg_height - tr_icon_d) / 2 or tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2
+        local tracker_font  = {
+            name   = "Segoe UI",
+            size   = math.floor(tr_bg_height - tr_margin * 2),
+            bold   = false,
+            italic = false
+        }
+		
+		local v_icon = {
+			sild    = config.old_icons and img.sild_old or img.sild,
+			kunafa  = config.old_icons and img.kunafa_old or img.kunafa,
+			suja    = config.old_icons and img.suja_old or img.suja,
+			wudwuds = config.old_icons and img.wudwuds_old or img.wudwuds,
+			azuz    = config.old_icons and img.azuz_old or img.azuz
+		}
+		
+        local retrieval_elements = {
+            { type = "icon",  value = v_icon.sild, width = tr_icon_d, flag = is_box_full("Rysher"), alt_flag = alt_tracker, frame = true },
+            { type = "text",  value = get_box_msg("Rysher") },
+            { type = "icon",  value = v_icon.kunafa, width = tr_icon_d, flag = is_box_full("Murtabak"), alt_flag = alt_tracker, frame = true },
+            { type = "text",  value = get_box_msg("Murtabak") },
+            { type = "icon",  value = v_icon.suja, width = tr_icon_d, flag = is_box_full("Apar"), alt_flag = alt_tracker, frame = true },
+            { type = "text",  value = get_box_msg("Apar") },
+            { type = "icon",  value = v_icon.wudwuds, width = tr_icon_d, flag = is_box_full("Plumpeach"), alt_flag = alt_tracker, frame = true },
+            { type = "text",  value = get_box_msg("Plumpeach") },
+            { type = "icon",  value = v_icon.azuz, width = tr_icon_d, flag = is_box_full("Sabar"), alt_flag = alt_tracker, frame = true },
+            { type = "text",  value = get_box_msg("Sabar") }
+        }
+        
+        local tracker_elements = {
+            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving, alt_flag = alt_tracker },
+			{ type = "text",  value = get_ship_message() },
+            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving, alt_flag = alt_tracker },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
+            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations"), alt_flag = alt_tracker },
+			{ type = "bar",   value = get_timer(tidx.ration), max = config.box_datas.Rations.timer, flag = is_box_full("Rations") },
+            { type = "timer", value = get_timer_msg(tidx.ration) },
+			{ type = "text",  value = get_box_msg("Rations") },
+            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations"), alt_flag = alt_tracker },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
+            { type = "icon",  value = img.retrieval, width = tr_icon_d, flag = is_box_full("retrieval"), alt_flag = alt_tracker },
+            { type = "table", value = retrieval_elements },
+            { type = "icon",  value = img.retrieval, width = tr_icon_d, flag = is_box_full("retrieval"), alt_flag = alt_tracker },
+            { type = "icon",  value = img.spacer_l , width = tr_icon_d },
+            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares"), alt_flag = alt_tracker },
+            { type = "text",  value = get_box_msg("Shares") },
+            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares"), alt_flag = alt_tracker },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
+            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest"), alt_flag = alt_tracker },
+			{ type = "bar",   value = get_timer(tidx.nest), max = config.box_datas.Nest.timer, flag = is_box_full("Nest") },
+            { type = "timer", value = get_timer_msg(tidx.nest) },
+            { type = "text",  value = get_box_msg("Nest") },
+            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest"), alt_flag = alt_tracker },
+            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
+            { type = "icon",  value = img.pugee, width = tr_icon_d, flag = is_box_full("pugee"), alt_flag = alt_tracker },
+			{ type = "bar",   value = get_timer(tidx.pugee), max = config.box_datas.pugee.timer, flag = is_box_full("pugee") },
+            { type = "timer", value = get_timer_msg(tidx.pugee) }
+        }
+        
+        local totalTrackerWidth = measureElements(tracker_font, tracker_elements, tracker_gap)
+        local tracker_start_x = (screen_w - totalTrackerWidth) / 2
+		
+        local tr_ref_font = d2d.Font.new(tracker_font.name, tracker_font.size, tracker_font.bold, tracker_font.italic)
+        local _, ref_char_height = tr_ref_font:measure("A")
+        local tracker_txt_y = tr_bg_y + tr_bg_height - ref_char_height
+        
+        local tr_border_h      = base_border_h * tr_eff_scale
+        local tr_end_border_w  = base_end_border_w * tr_eff_scale
+        local tr_border_y      = alt_tracker and tr_bg_y + tr_bg_height - (tr_border_h / 2) or tr_bg_y - (tr_border_h / 2)
+        local tr_sect_border_x = tr_end_border_w - (tr_margin / 2)
+        local tr_sect_border_w = screen_w - tr_end_border_w - tr_sect_border_x + tr_margin
         
         -------------------------------------------------------------------
         -- Ship/Trades Ticker
@@ -1073,7 +1485,7 @@ d2d.register(
 
         local ti_opacity     = config.ti_opacity * fade_value
 		local ti_user_scale  = config.ti_user_scale
-        local ti_eff_scale   = screen_scale * ti_user_scale
+        local ti_eff_scale   = alt_tracker and screen_scale * ti_user_scale * tent_ui_scale or screen_scale * ti_user_scale
         local ti_margin      = base_margin * ti_eff_scale
         local ti_bg_height   = 28 * ti_eff_scale
         local ti_icon_d      = ti_bg_height * 1.1
@@ -1082,12 +1494,11 @@ d2d.register(
 		local ti_bg_color    = apply_opacity(color.background, ti_opacity)
 		local ticker_gap     = 10 * ti_eff_scale
 		local ti_ex_gap      = ticker_gap
-        local ti_bg_y        = 0
-		local ti_icon_y      = (ti_bg_height - ti_icon_d) / 2
-        local ti_font_size   = math.floor(ti_bg_height - ti_margin * 2)
+        local ti_bg_y        = alt_tracker and screen_h - ti_bg_height or 0
+		local ti_icon_y      = alt_tracker and ti_bg_y + (ti_bg_height - ti_icon_d + ti_margin) / 2 or ti_bg_y + (ti_bg_height - ti_icon_d) / 2
         local ticker_font    = {
             name   = "Segoe UI",
-            size   = ti_font_size,
+            size   = math.floor(ti_bg_height - ti_margin * 2),
             bold   = false,
             italic = true
         }
@@ -1136,473 +1547,103 @@ d2d.register(
         
         local ti_border_h      = base_border_h * 0.56 * ti_eff_scale
         local ti_end_border_w  = base_end_border_w * 0.56 * ti_eff_scale
-        local ti_border_y      = ti_bg_y + ti_bg_height - (ti_border_h / 2)
+        local ti_border_y      = alt_tracker and ti_bg_y - (ti_border_h / 2) or ti_bg_y + ti_bg_height - (ti_border_h / 2)
         local ti_sect_border_x = ti_end_border_w - (ti_margin / 2)
         local ti_sect_border_w = screen_w - ti_end_border_w - ti_sect_border_x + ti_margin
-		
-        -------------------------------------------------------------------
-        -- Factilities Tracker
-        -------------------------------------------------------------------
 
-        local tr_opacity    = config.tr_opacity * fade_value
-		local tr_user_scale = config.tr_user_scale
-        local tr_eff_scale  = alt_tracker and screen_scale * tr_user_scale * tent_ui_scale or screen_scale * tr_user_scale
-        local tr_margin     = base_margin * tr_eff_scale
-        local tr_bg_height  = 50 * tr_eff_scale
-        local tr_bg_y       = alt_tracker and 0 or screen_h - tr_bg_height
-        local tr_bg_color   = apply_opacity(color.background, tr_opacity)
-        local tr_icon_d     = tr_bg_height * 1.1
-		local tracker_gap   = 18 * tr_eff_scale
-		local tr_icon_y     = alt_tracker and tr_bg_y + (tr_bg_height - tr_icon_d) / 2 or tr_bg_y + (tr_bg_height - tr_icon_d + tr_margin) / 2
-        local tr_font_size  = math.floor(tr_bg_height - tr_margin * 2)
-        local tracker_font  = {
-            name   = "Segoe UI",
-            size   = tr_font_size,
-            bold   = false,
-            italic = false
-        }
-		local v_icon = {
-			sild    = config.old_icons and img.sild_old or img.sild,
-			kunafa  = config.old_icons and img.kunafa_old or img.kunafa,
-			suja    = config.old_icons and img.suja_old or img.suja,
-			wudwuds = config.old_icons and img.wudwuds_old or img.wudwuds,
-			azuz    = config.old_icons and img.azuz_old or img.azuz
-		}
-        local retrieval_elements = {
-            { type = "icon",  value = v_icon.sild, width = tr_icon_d, flag = is_box_full("Rysher"), frame = true },
-            { type = "text",  value = get_box_msg("Rysher") },
-            { type = "icon",  value = v_icon.kunafa, width = tr_icon_d, flag = is_box_full("Murtabak"), frame = true },
-            { type = "text",  value = get_box_msg("Murtabak") },
-            { type = "icon",  value = v_icon.suja, width = tr_icon_d, flag = is_box_full("Apar"), frame = true },
-            { type = "text",  value = get_box_msg("Apar") },
-            { type = "icon",  value = v_icon.wudwuds, width = tr_icon_d, flag = is_box_full("Plumpeach"), frame = true },
-            { type = "text",  value = get_box_msg("Plumpeach") },
-            { type = "icon",  value = v_icon.azuz, width = tr_icon_d, flag = is_box_full("Sabar"), frame = true },
-            { type = "text",  value = get_box_msg("Sabar") }
-        }
-        
-        local tracker_elements = {
-            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving },
-			{ type = "text",  value = get_ship_message() },
-            { type = "icon",  value = img.ship, width = tr_icon_d, flag = leaving },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
-            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations") },
-			{ type = "bar",   value = get_timer(tidx.ration), max = config.box_datas.Rations.timer, flag = is_box_full("Rations") },
-            { type = "timer", value = get_timer_msg(tidx.ration) },
-			{ type = "text",  value = get_box_msg("Rations") },
-            { type = "icon",  value = img.rations, width = tr_icon_d, flag = is_box_full("Rations") },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
-            { type = "icon",  value = img.retrieval, width = tr_icon_d, flag = is_box_full("retrieval") },
-            { type = "table", value = retrieval_elements },
-            { type = "icon",  value = img.retrieval, width = tr_icon_d, flag = is_box_full("retrieval") },
-            { type = "icon",  value = img.spacer_l , width = tr_icon_d },
-            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares") },
-            { type = "text",  value = get_box_msg("Shares") },
-            { type = "icon",  value = img.workshop, width = tr_icon_d, flag = is_box_full("Shares") },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
-            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest") },
-			{ type = "bar",   value = get_timer(tidx.nest), max = config.box_datas.Nest.timer, flag = is_box_full("Nest") },
-            { type = "timer", value = get_timer_msg(tidx.nest) },
-            { type = "text",  value = get_box_msg("Nest") },
-            { type = "icon",  value = img.nest, width = tr_icon_d, flag = is_box_full("Nest") },
-            { type = "icon",  value = img.spacer_l, width = tr_icon_d },
-            { type = "icon",  value = img.pugee, width = tr_icon_d, flag = is_box_full("pugee") },
-			{ type = "bar",   value = get_timer(tidx.pugee), max = config.box_datas.pugee.timer, flag = is_box_full("pugee") },
-            { type = "timer", value = get_timer_msg(tidx.pugee) }
-        }
-        
-        local totalTrackerWidth = measureElements(tracker_font, tracker_elements, tracker_gap)
-        local tracker_start_x = (screen_w - totalTrackerWidth) / 2
-		
-        local tr_ref_font = d2d.Font.new(tracker_font.name, tracker_font.size, tracker_font.bold, tracker_font.italic)
-        local _, ref_char_height = tr_ref_font:measure("A")
-        local tracker_txt_y = tr_bg_y + tr_bg_height - ref_char_height
-        
-        local tr_border_h      = base_border_h * tr_eff_scale
-        local tr_end_border_w  = base_end_border_w * tr_eff_scale
-        local tr_border_y      = alt_tracker and tr_bg_height - (tr_border_h / 2) or tr_bg_y - (tr_border_h / 2)
-        local tr_sect_border_x = tr_end_border_w - (tr_margin / 2)
-        local tr_sect_border_w = screen_w - tr_end_border_w - tr_sect_border_x + tr_margin
-		
 		-------------------------------------------------------------------
-		-- Moon Tracker
+		-- Voucher Tracker
 		-------------------------------------------------------------------
 		
-		local moon   = img["moon_" .. tostring(moon_idx)]
-		local m_num  = img["m_num_" .. tostring(moon_idx)]
-		local moon_x = (moon_pos == "map" and 16 or moon_pos == "rest" and 4 or 4) * screen_scale
-		local moon_y = (moon_pos == "map" and 202 or moon_pos == "rest" and 1722 or 1922) * screen_scale
-		local moon_w = 140 * screen_scale
-		local moon_h = 140 * screen_scale
-		local moon_a = (moon_pos == "map" and 0.9 or 1) * fade_value_m
+		
 
 		-------------------------------------------------------------------
 		-- System Clock
 		-------------------------------------------------------------------
 		
-		local clock_text       = "placeholder"
+		local ck_opacity       = config.ck_opacity * fade_value_c
+		local clock_text       = config.non_meridian_c and os.date("%H:%M") or os.date("%I:%M")
 		local ck_margin        = alt_tracker and tr_margin or ti_margin
 		local clock_font_size  = alt_tracker and tracker_font.size or ticker_font.size
 		local clock_font       = d2d.Font.new("Segoe UI", clock_font_size, true, false)
 		local clock_txt_w      = clock_font:measure(clock_text)
 		local clock_txt_x      = screen_w - clock_txt_w - ck_margin
 		local clock_txt_y      = alt_tracker and tracker_txt_y or ticker_txt_y
-		local ck_text_color    = apply_opacity(color.clock_text, fade_value_c)
-		local ck_bg_w          = clock_txt_w + 2 * ck_margin
+		local ck_text_color    = apply_opacity(color.clock_text, ck_opacity)
+		local ck_bg_w          = clock_txt_w * 1.5
 		local ck_bg_h          = alt_tracker and tr_bg_height or ti_bg_height
-		local ck_bg_x          = screen_w - ck_bg_w
-		local ck_bg_color      = apply_opacity(color.background, fade_value_c)
+		local ck_bg_x          = screen_w - ck_bg_w + ck_margin * 0.5
+		local ck_bg_color      = apply_opacity(color.background, ck_opacity)
 		local ck_end_border_w  = alt_tracker and tr_end_border_w or ti_end_border_w
 		local ck_border_y      = alt_tracker and tr_border_y or ti_border_y
 		local ck_border_h      = alt_tracker and tr_border_h or ti_border_h
-		local ck_sect_border_w = ck_bg_w - ck_end_border_w
+		local ck_border_neg    = ck_end_border_w - ck_margin * 0.283
+		
+		-------------------------------------------------------------------
+		-- Moon Tracker
+		-------------------------------------------------------------------
+		
+		local midx   = get_midx()
+		local moon   = img["moon_" .. tostring(midx)]
+		local m_num  = img["m_num_" .. tostring(midx)]
+		local moon_x = (moon_pos == "map" and 16 or moon_pos == "rest" and 4 or 4) * screen_scale
+		local moon_y = (moon_pos == "map" and 202 or moon_pos == "rest" and 1722 or 1922) * screen_scale
+		local moon_w = 140 * screen_scale
+		local moon_h = 140 * screen_scale
+		local moon_a = (moon_pos == "map" and 0.9 or 1) * fade_value_m
 
         -------------------------------------------------------------------
         -- DRAWS
         -------------------------------------------------------------------
-		
-		if not (config.auto_hide and hide_tracker) then
-			-- Draw the ticker
-			if config.draw_ticker then
-				d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
-				d2d.image(img.border_left, 0, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
-				d2d.image(img.border_right, screen_w - ti_end_border_w, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
-				if ti_sect_border_w > 0 then
-					d2d.image(img.border_section, ti_sect_border_x, ti_border_y, ti_sect_border_w, ti_border_h, ti_opacity)
-				end
-				while current_x < screen_w do
-					drawElements(ticker_font, ticker_elements, current_x, ticker_txt_y, ti_icon_d, ti_icon_y, ticker_gap, ti_margin, color, ti_opacity)
-					current_x = current_x + totalTickerWidth
-				end
-			end
 			
+		if config.draw_tracker and not (config.auto_hide and hide_tracker) then
 			-- Draw the tracker
-			if config.draw_tracker then
-				d2d.fill_rect(0, tr_bg_y, screen_w, tr_bg_height, tr_bg_color)
-				d2d.image(img.border_left, 0, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
-				d2d.image(img.border_right, screen_w - tr_end_border_w, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
-				if tr_sect_border_w > 0 then
-					d2d.image(img.border_section, tr_sect_border_x, tr_border_y, tr_sect_border_w, tr_border_h, tr_opacity)
-				end
-				drawElements(tracker_font, tracker_elements, tracker_start_x, tracker_txt_y, tr_icon_d, tr_icon_y, tracker_gap, tr_margin, color, tr_opacity)
+			d2d.fill_rect(0, tr_bg_y, screen_w, tr_bg_height, tr_bg_color)
+			d2d.image(img.border_left, 0, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
+			d2d.image(img.border_right, screen_w - tr_end_border_w, tr_border_y, tr_end_border_w, tr_border_h, tr_opacity)
+			if tr_sect_border_w > 0 then
+				d2d.image(img.border_section, tr_sect_border_x, tr_border_y, tr_sect_border_w, tr_border_h, tr_opacity)
+			end
+			drawElements(tracker_font, tracker_elements, tracker_start_x, tracker_txt_y, tr_icon_d, tr_icon_y, tracker_gap, tr_margin, tr_opacity)
+		end
+		
+		if config.draw_ticker and not (config.auto_hide_t and hide_tracker) then
+			-- Draw the ticker
+			d2d.fill_rect(0, ti_bg_y, screen_w, ti_bg_height, ti_bg_color)
+			d2d.image(img.border_left, 0, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
+			d2d.image(img.border_right, screen_w - ti_end_border_w, ti_border_y, ti_end_border_w, ti_border_h, ti_opacity)
+			if ti_sect_border_w > 0 then
+				d2d.image(img.border_section, ti_sect_border_x, ti_border_y, ti_sect_border_w, ti_border_h, ti_opacity)
+			end
+			while current_x < screen_w do
+				drawElements(ticker_font, ticker_elements, current_x, ticker_txt_y, ti_icon_d, ti_icon_y, ticker_gap, ti_margin, ti_opacity)
+				current_x = current_x + totalTickerWidth
 			end
 		end
 		
-		-- Draw the moon
-		if config.draw_moon and not (config.auto_hide_m and hide_moon) then
-			d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, moon_a)
-            d2d.image(moon, moon_x, moon_y, moon_w, moon_h, moon_a)
-			if config.draw_m_num then
-				d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, moon_a)
-			end
+		if config.draw_voucher and not (config.auto_hide_v and hide_tracker) then
+			-- Draw vouchers
 		end
 		
-		-- Draw the clock
-		if config.draw_clock and not (config.auto_hide_c and hide_clock) then
-			d2d.fill_rect(ck_bg_x, 0, ck_bg_w, ck_bg_h, ck_bg_color)
-			d2d.image(img.border_right, screen_w - ck_end_border_w, ck_border_y, ck_end_border_w, ck_border_h, fade_value_c)
-			if ck_sect_border_w > 0 then
-				d2d.image(img.border_section, ck_bg_x, ck_border_y, ck_sect_border_w, ck_border_h, fade_value_c)
+		if config.draw_clock and not (config.auto_hide_c and hide_tracker) then
+			-- Draw the clock
+			drawRectAlphaGradient("left", 0.5, 0, ck_bg_color, ck_bg_x, 0, ck_bg_w, ck_bg_h)
+			d2d.image(img.border_right, screen_w - ck_end_border_w, ck_border_y, ck_end_border_w, ck_border_h, ck_opacity * 0.82)
+			if ck_end_border_w < ck_bg_w then
+				drawRectAlphaGradient("left", 0.5, ck_border_neg, img.border_section, ck_bg_x, ck_border_y, ck_bg_w, ck_border_h, ck_opacity)
 			end
 			d2d.text(clock_font, clock_text, clock_txt_x, clock_txt_y, ck_text_color)
 		end
+		
+		if config.draw_moon and not (config.auto_hide_m and hide_moon) then
+			-- Draw the moon
+			d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, moon_a)
+			if not (ghub_moon and config.ghub_moon == "Nothing") then
+				d2d.image(moon, moon_x, moon_y, moon_w, moon_h, moon_a)
+				if config.draw_m_num then
+					d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, moon_a)
+				end
+			end
+		end
     end
-)
-
-----------------------------------------------------------------
--- CONFIG MENU
-----------------------------------------------------------------
-
-re.on_draw_ui(
-	function()
-		local font_size = imgui.get_default_font_size()
-		local window_w = imgui.calc_item_width()
-		local txtbox_w = font_size * 2.5
-		local txtbox_x = window_w - txtbox_w + 23
-		local button_w = font_size * 2.79 + 6
-		local button_h = font_size + 6
-		local button_x = window_w - button_w + 23
-		local indent_w = font_size + 3
-
-		if imgui.tree_node("Facility Tracker") then
-			local changed_draw, draw = imgui.checkbox("Display Tracker     ", config.draw_tracker)
-			if changed_draw then config.draw_tracker = draw; save_config() end
-			imgui.same_line()
-			
-			local cursor_pos1 = imgui.get_cursor_pos()
-			imgui.set_cursor_pos(Vector2f.new(button_x, cursor_pos1.y))
-			if imgui.button("Hotkey", Vector2f.new(button_w, button_h)) then
-				hotkey_listening.tr_hotkey = true
-				hotkey_messages.tr_hotkey = "press a key..."
-			end
-			if hotkey_listening.tr_hotkey then get_new_hotkey("tr_hotkey") end
-			imgui.same_line()
-			imgui.text(hotkey_messages.tr_hotkey)
-			
-			imgui.separator()
-			
-				imgui.begin_disabled(not config.draw_tracker)
-				
-				local checkboxes = {
-					{ "Progress Bars",     "draw_bars"   },
-					{ "Timers",            "draw_timers" },
-					{ "Flags",             "draw_flags"  },
-					{ "Old Village Icons", "old_icons"   }
-				}
-				for _, cb in ipairs(checkboxes) do
-					local label, key = cb[1], cb[2]
-					local changedBox, newVal = imgui.checkbox(label, config[key])
-					if changedBox then
-						config[key] = newVal
-						save_config()
-					end
-				end
-				imgui.separator()
-				
-				local changed_auto, auto = imgui.checkbox("Automatic Hiding", config.auto_hide)
-				if changed_auto then config.auto_hide = auto; save_config() end
-				imgui.text("")
-				
-					imgui.begin_disabled(not config.auto_hide)
-					
-					local changed_hwh, hwh = imgui.checkbox("Hide with HUD", config.hide_w_hud)
-					if changed_hwh then config.hide_w_hud = hwh; save_config() end
-					local hwh_checkboxes = {
-						{ "Hide while bowling",       "hide_w_bowling" },
-						{ "Hide while arm wrestling", "hide_w_wrestle" },
-						{ "Hide at hub tables",       "hide_at_table"  },
-						{ "Hide at camp gear",        "hide_at_camp"    }
-					}
-					if config.hide_w_hud then
-						imgui.indent(indent_w)
-						imgui.text("Options:")
-						for _, cb in ipairs(hwh_checkboxes) do
-							local label, key = cb[1], cb[2]
-							local changedBox, newVal = imgui.checkbox(label, config[key])
-							if changedBox then
-								config[key] = newVal
-								save_config()
-							end
-						end
-						imgui.unindent(indent_w)
-					end
-					imgui.text("")
-					
-					local show_when = {
-						"Don't show when:",
-						"Only show when:"
-					}
-					local show_index = get_index(show_when, config.show_when)
-					imgui.push_item_width(font_size * 8.5)
-					local changed_idx, index = imgui.combo("##show_when", show_index, show_when)
-					if changed_idx then config.show_when = show_when[index]; save_config() end
-					imgui.pop_item_width()
-					
-						imgui.indent(indent_w)
-						
-						if config.show_when == "Don't show when:" then
-							local changed_tent, tent = imgui.checkbox("in a tent", config.hide_in_tent)
-							if changed_tent then config.hide_in_tent = tent; save_config() end
-							
-							local changed_map, map = imgui.checkbox("viewing the map", config.hide_on_map)
-							if changed_map then config.hide_on_map = map; save_config() end
-							
-								imgui.begin_disabled(config.hide_in_qstcbt)
-								
-								local changed_quest, quest = imgui.checkbox("in a quest", config.hide_in_quest)
-								if changed_quest then config.hide_in_quest = quest; save_config() end
-								
-								local changed_combat, combat = imgui.checkbox("in any combat", config.hide_in_combat)
-								if changed_combat then config.hide_in_combat = combat; save_config() end
-								
-								imgui.end_disabled()
-							
-							local changed_qstcbt, qstcbt = imgui.checkbox("in quest combat (exclusive)", config.hide_in_qstcbt)
-							if changed_qstcbt then config.hide_in_qstcbt = qstcbt; save_config() end
-							
-							if config.hide_in_combat or config.hide_in_qstcbt then
-								local changed_hlfcbt, hlfcbt = imgui.checkbox("monster is searching (post-combat)", config.hide_in_hlfcbt)
-								if changed_hlfcbt then config.hide_in_hlfcbt = hlfcbt; save_config() end
-							end
-						end
-						
-						local only_checkboxes = {
-							{ "in a tent",            "draw_in_tent"  },
-							{ "viewing the map",      "draw_on_map"   },
-							{ "in a village",         "draw_in_life"  },
-							{ "in a base camp",       "draw_in_base"  },
-							{ "in the training area", "draw_in_train" }
-						}
-						if config.show_when == "Only show when:" then
-							for _, cb in ipairs(only_checkboxes) do
-								local label, key = cb[1], cb[2]
-								local changedBox, newVal = imgui.checkbox(label, config[key])
-								if changedBox then
-									config[key] = newVal
-									save_config()
-								end
-							end
-						end
-						
-						imgui.unindent(indent_w)
-					
-					imgui.separator()
-					
-					imgui.end_disabled()
-				
-				imgui.text("Tracker Scale:")
-				imgui.same_line()
-				
-				local cursor_pos2 = imgui.get_cursor_pos()
-				imgui.set_cursor_pos(Vector2f.new(txtbox_x, cursor_pos2.y))
-				imgui.push_item_width(txtbox_w)
-				local chg_scale_txt, scale_string, _, _ = imgui.input_text(" (0.0 to 2.0)", config.tr_user_scale)
-				local scale_txt = math.min(2, math.max(0, tonumber(scale_string) or 1))
-				if chg_scale_txt then config.tr_user_scale = scale_txt; save_config() end
-				imgui.pop_item_width()
-				
-				local chg_scale_sld, scale_sld = imgui.slider_float("##scale", config.tr_user_scale, 0.0, 2.0)
-				if chg_scale_sld then config.tr_user_scale = scale_sld; save_config() end
-				
-				imgui.text("Tracker Opacity:")
-				imgui.same_line()
-				
-				local cursor_pos3 = imgui.get_cursor_pos()
-				imgui.set_cursor_pos(Vector2f.new(txtbox_x, cursor_pos3.y))
-				imgui.push_item_width(txtbox_w)
-				local chg_opac_txt, opacity_string, _, _ = imgui.input_text(" (0.0 to 1.0)", config.tr_opacity)
-				local opac_txt = math.min(1, math.max(0, tonumber(opacity_string) or 1))
-				if chg_opac_txt then config.tr_opacity = opac_txt; save_config() end
-				imgui.pop_item_width()
-				
-				
-				local chg_opac_sld, opac_sld = imgui.slider_float("##opacity", config.tr_opacity, 0.0, 1.0)
-				if chg_opac_sld then config.tr_opacity = opac_sld; save_config() end
-				imgui.separator()
-				
-				imgui.end_disabled()
-			
-			imgui.tree_pop()
-		end
-		
-		if imgui.tree_node("Moon Phase Tracker") then
-			local changed_draw, draw = imgui.checkbox("Display Moon Phase", config.draw_moon)
-			if changed_draw then config.draw_moon = draw; save_config() end
-			imgui.same_line()
-			
-			local cursor_pos1 = imgui.get_cursor_pos()
-			imgui.set_cursor_pos(Vector2f.new(button_x, cursor_pos1.y))
-			if imgui.button("Hotkey", Vector2f.new(button_w, button_h)) then
-				hotkey_listening.mo_hotkey = true
-				hotkey_messages.mo_hotkey = "press a key..."
-			end
-			if hotkey_listening.mo_hotkey then get_new_hotkey("mo_hotkey") end
-			imgui.same_line()
-			imgui.text(hotkey_messages.mo_hotkey)
-			
-			imgui.separator()
-			
-				imgui.begin_disabled(not config.draw_moon)
-				
-				local checkboxes = {
-					{ "Numerals",         "draw_m_num"  },
-					{ "Automatic Hiding", "auto_hide_m" }
-				}
-				for _, cb in ipairs(checkboxes) do
-					local label, key = cb[1], cb[2]
-					local changedBox, newVal = imgui.checkbox(label, config[key])
-					if changedBox then
-						config[key] = newVal
-						save_config()
-					end
-				end
-				imgui.separator()
-				
-				imgui.end_disabled()
-			
-			imgui.tree_pop()
-		end
-		
-		if imgui.tree_node("System Clock") then
-			local changed_draw, draw = imgui.checkbox("Display Clock", config.draw_clock)
-			if changed_draw then config.draw_clock = draw; save_config() end
-			imgui.same_line()
-			
-			local cursor_pos1 = imgui.get_cursor_pos()
-			imgui.set_cursor_pos(Vector2f.new(button_x, cursor_pos1.y))
-			if imgui.button("Hotkey", Vector2f.new(button_w, button_h)) then
-				hotkey_listening.ck_hotkey = true
-				hotkey_messages.ck_hotkey = "press a key..."
-			end
-			if hotkey_listening.ck_hotkey then get_new_hotkey("ck_hotkey") end
-			imgui.same_line()
-			imgui.text(hotkey_messages.ck_hotkey)
-			
-			imgui.separator()
-			
-				imgui.begin_disabled(not config.draw_clock)
-				
-				local checkboxes = {
-					{ "Automatic Hiding", "auto_hide_c"  }
-				}
-				for _, cb in ipairs(checkboxes) do
-					local label, key = cb[1], cb[2]
-					local changedBox, newVal = imgui.checkbox(label, config[key])
-					if changedBox then
-						config[key] = newVal
-						save_config()
-					end
-				end
-				imgui.separator()
-				
-				imgui.end_disabled()
-			
-			
-			imgui.tree_pop()
-		end
-		
-		-- if imgui.tree_node("Tracker Data DELETE ME") then
-			-- imgui.text("arm wrestling: " .. tostring(is_active_situation("arm_wrestling")))
-			-- imgui.text("table sitting: " .. tostring(current_table_sit))
-			-- imgui.text("map open: " .. tostring(map_open))
-			-- imgui.text("hide tracker: " .. tostring(hide_tracker))
-			-- imgui.text("hide moon: " .. tostring(hide_moon))
-			-- imgui.text("fade: " .. tostring(fade_value))
-			-- imgui.text("previous hidden: " .. tostring(previous_hidden))
-			-- imgui.text("current hidden: " .. tostring(fade_manager:call("get_IsVisibleStateAny")))
-			-- imgui.text("previous fading: " .. tostring(previous_fading))
-			-- imgui.text("current fading: " .. tostring(fade_manager:call("get_IsFadingAny")))
-			-- imgui.text("map flow: " .. tostring(map_flow_check))
-			-- imgui.text("slider visible: " .. tostring(slider_check))
-			-- imgui.text("campfire sitting: " .. tostring(campfire_check))
-			-- imgui.tree_pop()
-		-- end
-		
-		-- if imgui.tree_node("Trades Ticker") then
-			-- local changed_ti_speed_scale, newVal2 = imgui.slider_float("Ticker Speed", config.ti_speed_scale, 0.1, 3.0)
-			-- if changed_ti_speed_scale then config.ti_speed_scale = newVal2; save_config() end
-
-			-- local changed_ti_scale, newVal = imgui.slider_float("Ticker Scale", config.ti_user_scale, 0.0, 2.0)
-			-- if changed_ti_scale then config.ti_user_scale = newVal; save_config() end
-
-			-- local changed_ti_opacity, newVal3 = imgui.slider_float("Ticker Opacity", config.ti_opacity, 0.0, 1.0)
-			-- if changed_ti_opacity then config.ti_opacity = newVal3; save_config() end
-
-			-- local checkboxes = {
-				-- { "Display Ticker", "draw_ticker" },
-				-- { "Include Ship",   "draw_ship"   },
-				-- { "Include Trades", "draw_trades" }
-			-- }
-			-- for _, cb in ipairs(checkboxes) do
-				-- local label, key = cb[1], cb[2]
-				-- local changedBox, newVal = imgui.checkbox(label, config[key])
-				-- if changedBox then
-					-- config[key] = newVal
-					-- save_config()
-				-- end
-			-- end
-
-			-- imgui.tree_pop()
-		-- end
-	end
 )

@@ -1,13 +1,31 @@
 
-system clock
+mini tracker
+moon on environment overview
 lucky voucher tracker
-ancient wyvern coins in hub, probably a gimmick
+ancient wyvern coins in hub
 wishlist tracker
 ship/trades ticker
- - reposition ticker in tent
 moon position for non-16:9
 shares flag on items available
 detect start menu for showing tracker
+
+
+- added system clock
+- config window
+- added option for moon to match hub moon
+- moon now matches moon in quest
+
+
+
+draw helper functions
+
+
+
+
+
+
+
+
 
 
 
