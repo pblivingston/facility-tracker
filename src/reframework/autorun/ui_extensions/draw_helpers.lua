@@ -219,8 +219,13 @@ function draw_helpers.measureElements(elements, data, scaling)
             elem.width = timer_font:measure(elem.value)
             elem.measured_width = 0 - data.gap
         elseif elem.type == "table" then
-			local tbl_data = data
-            tbl_data.font.size = data.font.size * table_scale
+			local tbl_data = {}
+            tbl_data.font = {
+				name   = data.font.name,
+				size   = data.font.size * table_scale,
+				bold   = data.font.bold,
+				italic = data.font.italic
+			}
             tbl_data.gap = data.gap * table_scale
             elem.measured_width = draw_helpers.measureElements(elem.value, tbl_data, true)
         end
@@ -274,18 +279,19 @@ function draw_helpers.drawElements(elements, data, scaling)
             d2d.text(timer_font, elem.value, timer_x, timer_y, draw_helpers.apply_opacity(draw_helpers.color.timer_text, data.opacity))
         elseif elem.type == "table" then
 			local tbl_data = {}
-			tbl_data.start_x = xPos
-			
 			tbl_data.font = {
 				name   = data.font.name,
 				size   = data.font.size * table_scale,
 				bold   = data.font.bold,
 				italic = data.font.italic
 			}
-            tbl_data.txt_y = data.txt_y + (ref_char_h - ref_char_h * table_scale) / 2
-			tbl_data.icon_d = data.icon_d * table_scale
-            tbl_data.icon_y = data.icon_y + (data.icon_d - tbl_data.icon_d) * 5/8
-            tbl_data.gap = data.gap * table_scale
+			tbl_data.start_x = xPos
+            tbl_data.txt_y   = data.txt_y + (ref_char_h - ref_char_h * table_scale) / 2
+			tbl_data.opacity = data.opacity
+            tbl_data.gap     = data.gap * table_scale
+			tbl_data.icon_d  = data.icon_d * table_scale
+            tbl_data.icon_y  = data.icon_y + (data.icon_d - tbl_data.icon_d) * 5/8
+			tbl_data.margin  = data.margin * table_scale
             xPos = draw_helpers.drawElements(elem.value, tbl_data, true)
         end
     end
