@@ -1,6 +1,6 @@
 local core = require("ui_extensions/core")
 
-local facility_helpers = { is_in_port = false }
+local facility_helpers = {}
 
 local previous_timer_value = {}
 

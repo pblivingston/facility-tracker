@@ -14,6 +14,7 @@ detect start menu for showing tracker
 - config window
 - added option for moon to match hub moon
 - moon now matches moon in quest
+- broke script into modules
 
 
 
@@ -82,7 +83,7 @@ app.GUI090302 - rest menu
 
 
 
-2, 44, 0, 0   - plains, forest, basin, cliffs, ruins, arena
+2, 44, 0,  0  - plains, forest, basin, cliffs, ruins, arena
 2, 37, 44, 0  - trail, tunnel, path, approach
 2, 38, 44, 0  - suja
 2, 39, 44, 0  - hub

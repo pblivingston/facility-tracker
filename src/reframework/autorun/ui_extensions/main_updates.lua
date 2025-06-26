@@ -1,8 +1,9 @@
 local core = require("ui_extensions/core")
 
-local main_updates = { dt = 0 }
+local main_updates = {}
 
 local previous_time       = os.clock()
+local character           = nil
 local quest_moon          = false
 local map_proc            = false
 local previous_map_intrct = false
@@ -72,7 +73,7 @@ function main_updates.is_active_player()
 	if not (character_success and character_result) then
 		return false
 	end
-	main_updates.character = character_result
+	character = character_result
 	
 	return true
 end
@@ -139,7 +140,7 @@ function main_updates.get_fade()
 		fade = 0
 	end
 	
-	main_updates.fade_value = core.config.auto_hide and fade or 1
+	main_updates.fade_value   = core.config.auto_hide and fade or 1
 	main_updates.fade_value_v = core.config.auto_hide_v and fade or 1
 	main_updates.fade_value_c = core.config.auto_hide_c and fade or 1
 	main_updates.fade_value_m = core.config.auto_hide_m and fade or 1
@@ -217,16 +218,16 @@ function main_updates.get_hidden()
 	end
 	
 	local stage_id           = environment_manager:get_field("_CurrentStage")
-	local is_in_tent         = main_updates.character:call("get_IsInAllTent")
+	local is_in_tent         = character:call("get_IsInAllTent")
 	local map_open           = (cur_map_flow == "Active" or cur_map_flow == "CloseModel")
 	local in_training        = stage_id == stage_idx.training and not (is_in_tent or map_open)
 	local radar_open         = (cur_map_flow == "RadarActive" or cur_map_flow == "WaitOpenReq" or cur_map_flow == "CloseRadarModel" or (cur_map_flow == "OpenRadar" and not map_proc)) and not (in_training or previous_arm_wrest)
 	local active_quest       = mission_manager:call("get_IsActiveQuest")
 	local quest_end          = mission_manager:call("get_IsQuestEndShowing")
-	local in_base_camp       = main_updates.character:call("get_IsInBaseCamp") and not (is_in_tent or map_open)
-	local in_life_area       = main_updates.character:call("get_IsInLifeArea") and not (is_in_tent or map_open or in_base_camp)
-	local in_combat          = main_updates.character:call("get_IsCombat")
-	local half_combat        = main_updates.character:call("get_IsHalfCombat")
+	local in_base_camp       = character:call("get_IsInBaseCamp") and not (is_in_tent or map_open)
+	local in_life_area       = character:call("get_IsInLifeArea") and not (is_in_tent or map_open or in_base_camp)
+	local in_combat          = character:call("get_IsCombat")
+	local half_combat        = character:call("get_IsHalfCombat")
 	local is_bowling         = minigame_manager:get_field("_Bowling"):call("get_IsPlaying")
 	local quest_combat       = active_quest and in_combat
 	
