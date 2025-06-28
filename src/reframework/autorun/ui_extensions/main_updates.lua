@@ -4,7 +4,6 @@ local main_updates = {}
 
 local previous_time       = os.clock()
 local character           = nil
-local quest_moon          = false
 local map_proc            = false
 local previous_map_intrct = false
 local current_map_intrct  = false
@@ -16,6 +15,7 @@ local current_rest_open   = false
 local previous_camp_sit   = false
 local current_camp_sit    = false
 local slider_visible      = false
+local radial_visible      = false
 local fade                = 0
 local out_speed           = 2.5
 local in_speed            = 1
@@ -87,7 +87,7 @@ function main_updates.get_midx()
 	local moon_idx = moon_data_success and main_moon_data:call("get_MoonIdx")
 	local hubm_idx = lmoon_data_success and lobby_moon_data:call("get_MoonIdx")
 	local qstm_idx = qmoon_data_success and quest_moon_data:call("get_MoonIdx")
-	return quest_moon and qstm_idx or (main_updates.ghub_moon and core.config.ghub_moon == "Hub moon") and hubm_idx or moon_idx
+	return main_updates.quest_moon and qstm_idx or (main_updates.ghub_moon and core.config.ghub_moon == "Hub moon") and hubm_idx or moon_idx
 end
 
 local function is_active_situation(situation)
@@ -103,6 +103,8 @@ local function is_active_situation(situation)
 end
 
 function main_updates.get_fade()
+	local config = core.config
+	
 	local current_hidden = fade_manager:call("get_IsVisibleStateAny")
 	local current_fading = fade_manager:call("get_IsFadingAny")
 	
@@ -140,13 +142,15 @@ function main_updates.get_fade()
 		fade = 0
 	end
 	
-	main_updates.fade_value   = core.config.auto_hide and fade or 1
-	main_updates.fade_value_v = core.config.auto_hide_v and fade or 1
-	main_updates.fade_value_c = core.config.auto_hide_c and fade or 1
-	main_updates.fade_value_m = core.config.auto_hide_m and fade or 1
+	main_updates.fade_value   = config.auto_hide and fade or 1
+	main_updates.fade_value_v = config.auto_hide_v and fade or 1
+	main_updates.fade_value_c = config.auto_hide_c and fade or 1
+	main_updates.fade_value_m = config.auto_hide_m and fade or 1
 end
 
 function main_updates.get_hidden()
+	local config = core.config
+	
 	local map_controller     = gui_manager:get_field("<MAP3D>k__BackingField")
 	local map_flow_manager   = map_controller:get_field("_Flow")
 	local change_area        = map_flow_manager:call("checkChangeArea")
@@ -231,44 +235,49 @@ function main_updates.get_hidden()
 	local is_bowling         = minigame_manager:get_field("_Bowling"):call("get_IsPlaying")
 	local quest_combat       = active_quest and in_combat
 	
-	local draw_w_bowling     = is_bowling and radar_open and not core.config.hide_w_bowling
-	local draw_w_wrestle     = previous_arm_wrest and not core.config.hide_w_wrestle
-	local draw_at_table      = radar_open and previous_table_sit and not core.config.hide_at_table
-	local draw_at_camp       = previous_camp_sit and not core.config.hide_at_camp
+	local draw_w_bowling     = is_bowling and radar_open and not config.hide_w_bowling
+	local draw_w_wrestle     = previous_arm_wrest and not config.hide_w_wrestle
+	local draw_at_table      = radar_open and previous_table_sit and not config.hide_at_table
+	local draw_at_camp       = previous_camp_sit and not config.hide_at_camp
 	
-	local dont_show          = core.config.show_when == "Don't show when:"
-	local hide_in_tent       = is_in_tent and core.config.hide_in_tent
-	local hide_on_map        = map_open and core.config.hide_on_map
-	local hide_in_quest      = active_quest and core.config.hide_in_quest and not core.config.hide_in_qstcbt
-	local hide_in_combat     = in_combat and core.config.hide_in_combat and not core.config.hide_in_qstcbt
-	local hide_in_qstcbt     = quest_combat and core.config.hide_in_qstcbt
-	local hide_in_hlfcbt     = half_combat and core.config.hide_in_hlfcbt and (core.config.hide_in_combat or (active_quest and core.config.hide_in_qstcbt))
+	local dont_show          = config.show_when == "Don't show when:"
+	local hide_in_tent       = is_in_tent and config.hide_in_tent
+	local hide_on_map        = map_open and config.hide_on_map
+	local hide_in_quest      = active_quest and config.hide_in_quest and not config.hide_in_qstcbt
+	local hide_in_combat     = in_combat and config.hide_in_combat and not config.hide_in_qstcbt
+	local hide_in_qstcbt     = quest_combat and config.hide_in_qstcbt
+	local hide_in_hlfcbt     = half_combat and config.hide_in_hlfcbt and (config.hide_in_combat or (active_quest and config.hide_in_qstcbt))
 
-	local only_show          = core.config.show_when == "Only show when:"
-	local draw_in_tent       = is_in_tent and core.config.draw_in_tent
-	local draw_on_map        = map_open and core.config.draw_on_map
-	local draw_in_life       = in_life_area and core.config.draw_in_life
-	local draw_in_base       = in_base_camp and core.config.draw_in_base
-	local draw_in_train      = in_training and core.config.draw_in_train
+	local only_show          = config.show_when == "Only show when:"
+	local draw_in_tent       = is_in_tent and config.draw_in_tent
+	local draw_on_map        = map_open and config.draw_on_map
+	local draw_in_life       = in_life_area and config.draw_in_life
+	local draw_in_base       = in_base_camp and config.draw_in_base
+	local draw_in_train      = in_training and config.draw_in_train
 
 	local dont_show_hide     = dont_show and (hide_in_tent or hide_on_map or hide_in_quest or hide_in_combat or hide_in_qstcbt or hide_in_hlfcbt)
 	local only_show_hide     = only_show and not (draw_in_tent or draw_on_map or draw_in_life or draw_in_base or draw_in_train)
-	local hide_w_hud         = core.config.hide_w_hud and not (slider_visible or draw_w_bowling or draw_w_wrestle or draw_at_table or draw_at_camp or is_in_tent or map_open)
+	local hide_w_hud         = config.hide_w_hud and not (slider_visible or draw_w_bowling or draw_w_wrestle or draw_at_table or draw_at_camp or is_in_tent or map_open)
+	local auto_hide          = dont_show_hide or only_show_hide or hide_w_hud
 	
-	main_updates.hide_tracker = dont_show_hide or only_show_hide or hide_w_hud
 	main_updates.alt_tracker  = map_open or is_in_tent
+	main_updates.hide_tracker = auto_hide and config.auto_hide and not (radial_visible and config.tr_radialMenu)
+	main_updates.hide_ticker  = auto_hide and config.auto_hide_t and not (radial_visible and config.ti_radialMenu)
+	main_updates.hide_voucher = auto_hide and config.auto_hide_v and not (radial_visible and config.vo_radialMenu)
+	main_updates.hide_clock   = auto_hide and config.auto_hide_c and not (radial_visible and config.ck_radialMenu)
 	
-	main_updates.hide_moon    = not ((radar_open and slider_visible) or (map_open and previous_map_intrct) or previous_rest_open)
+	main_updates.hide_moon    = config.auto_hide_m and not ((radar_open and slider_visible) or (map_open and previous_map_intrct) or previous_rest_open)
 	main_updates.moon_pos     = map_open and "map" or previous_rest_open and "rest" or "radar"
-	quest_moon                = active_quest
+	main_updates.quest_moon   = active_quest
 	
 	main_updates.ghub_moon    = stage_id == stage_idx.g_hub
 	
-	if not core.config.auto_hide then main_updates.alt_tracker = false end
-	if not core.config.auto_hide_m then main_updates.moon_pos = "radar" end
+	if not config.auto_hide then main_updates.alt_tracker = false end
+	if not config.auto_hide_m then main_updates.moon_pos = "radar" end
 	
 	current_map_intrct = false
 	slider_visible = false
+	radial_visible = false
 end
 
 function main_updates.register_hooks()
@@ -283,6 +292,10 @@ function main_updates.register_hooks()
 	sdk.hook(
 		sdk.find_type_definition("app.GUI060000"):get_method("setInteractButtonAssignPos"),
 		function(args) current_map_intrct = true end, nil
+	)
+	sdk.hook(
+		sdk.find_type_definition("app.GUI020006"):get_method("isItemAllSlider"),
+		function(args) radial_visible = true end, nil
 	)
 	sdk.hook(
 		sdk.find_type_definition("app.GUI020006PartsAllSliderItem"):get_method("update"),

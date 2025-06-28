@@ -1,7 +1,10 @@
 local core         = require("ui_extensions/core")
 local main_updates = require("ui_extensions/main_updates")
 
-local draw_helpers = { ti = { scroll_offset = 0 } }
+local draw_helpers = {
+	ti = { scroll_offset = 0 },
+	mi = { ck_opacity = 1, ck_x = 0 }
+}
 
 local base_margin        = 4
 local base_border_h      = 40
@@ -112,6 +115,33 @@ function draw_helpers.facility_tracker()
 	draw_helpers.tr = tr
 end
 
+function draw_helpers.mini_tracker()
+	local tr = draw_helpers.tr
+	local mi = draw_helpers.mi
+	
+	mi.font    = tr.font
+	mi.txt_y   = tr.txt_y
+	mi.opacity = (main_updates.alt_tracker and core.config.draw_clock) and mi.ck_opacity or tr.opacity
+	mi.gap     = tr.gap
+	mi.icon_d  = tr.icon_d
+	mi.icon_y  = tr.icon_y
+	mi.margin  = tr.margin
+	
+	mi.elements = {
+		{ type = "icon",  value = img.ph_icon, width = mi.icon_d },
+		{ type = "icon",  value = img.ph_icon, width = mi.icon_d },
+		{ type = "icon",  value = img.ph_icon, width = mi.icon_d }
+	}
+	print("progress")
+	mi.totalWidth = draw_helpers.measureElements(mi.elements, mi)
+	
+	local right_start = draw_helpers.screen_w - mi.totalWidth - mi.margin
+	local altTr_start = core.config.draw_clock and mi.ck_x - mi.totalWidth - mi.gap or right_start
+	mi.start_x = main_updates.alt_tracker and altTr_start or core.config.mini_right and right_start or mi.margin
+	
+	draw_helpers.mi = mi
+end
+
 function draw_helpers.trades_ticker()
 	local ti = draw_helpers.ti
 	
@@ -164,7 +194,6 @@ function draw_helpers.drawRectAlphaGradient(direction, offset, negative, element
     local is_reverse = (direction == "up" or direction == "left")
     local rect_len = is_vertical and height or width
     local neg = negative / (rect_len - 1)
-    alpha = alpha or 1
 
     local is_color = type(element) == "number" and element >= 0 and element <= 0xFFFFFFFF
 
@@ -185,20 +214,20 @@ function draw_helpers.drawRectAlphaGradient(direction, offset, negative, element
         if is_reverse then frac = 1 - frac end
         local grad_frac = (frac - offset) / (1 - offset)
         local grad_opacity = frac < neg and 0 or frac < offset and 1 or 1 - grad_frac^2 / (2 * (grad_frac^2 - grad_frac) + 1)
+		local opacity = grad_opacity * alpha
 
         if is_color then
-            local line_color = draw_helpers.apply_opacity(element, grad_opacity)
+            local line_color = draw_helpers.apply_opacity(element, opacity)
             if is_vertical then
                 d2d.line(pos_x, pos_y + i, pos_x + width, pos_y + i, 1.2, line_color)
             else
                 d2d.line(pos_x + i, pos_y, pos_x + i, pos_y + height, 1.2, line_color)
             end
         elseif is_img then
-            local img_opacity = grad_opacity * alpha
             if is_vertical then
-                d2d.image(element, pos_x, pos_y + i, width, 1, img_opacity)
+                d2d.image(element, pos_x, pos_y + i, width, 1, opacity)
             else
-                d2d.image(element, pos_x + i, pos_y, 1, height, img_opacity)
+                d2d.image(element, pos_x + i, pos_y, 1, height, opacity)
             end
         end
     end
@@ -207,6 +236,7 @@ end
 function draw_helpers.measureElements(elements, data, scaling)
     local totalWidth = 0
     for i, elem in ipairs(elements) do
+		if elem.draw == false then goto continue end
 		local text_font = d2d.Font.new(data.font.name, data.font.size, data.font.bold, data.font.italic)
 		local timer_font = d2d.Font.new(data.font.name, data.font.size * timer_scale, data.font.bold, data.font.italic)
         if elem.type == "text" then
@@ -230,6 +260,7 @@ function draw_helpers.measureElements(elements, data, scaling)
             elem.measured_width = draw_helpers.measureElements(elem.value, tbl_data, true)
         end
         totalWidth = totalWidth + elem.measured_width + data.gap
+		::continue::
     end
     return totalWidth - data.gap
 end
@@ -237,6 +268,7 @@ end
 function draw_helpers.drawElements(elements, data, scaling)
 	local xPos = data.start_x
     for i, elem in ipairs(elements) do
+		if elem.draw == false then goto continue end
 		local text_font = d2d.Font.new(data.font.name, data.font.size, data.font.bold, data.font.italic)
 		local timer_font = d2d.Font.new(data.font.name, data.font.size * timer_scale, data.font.bold, data.font.italic)
 		local ref_char_w, ref_char_h = text_font:measure("A")
@@ -294,6 +326,7 @@ function draw_helpers.drawElements(elements, data, scaling)
 			tbl_data.margin  = data.margin * table_scale
             xPos = draw_helpers.drawElements(elem.value, tbl_data, true)
         end
+		::continue::
     end
     return xPos
 end

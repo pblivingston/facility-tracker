@@ -63,7 +63,7 @@ function draw.facility_tracker()
 		{ type = "timer", value = facility_helpers.get_timer_msg(tidx.pugee) }
 	}
 	
-	tr.totalWidth = draw_helpers.measureElements(tracker_elements, tr, false)
+	tr.totalWidth = draw_helpers.measureElements(tracker_elements, tr)
 	tr.start_x    = (draw_helpers.screen_w - tr.totalWidth) / 2
 	
 	-- Draw the tracker
@@ -76,31 +76,34 @@ function draw.facility_tracker()
 	draw_helpers.drawElements(tracker_elements, tr, false)
 end
 
--- function draw.mini_tracker()
-	-- local config = core.config
-	-- local tidx = facility_updates.tidx
-	-- local color = draw_helpers.color
-	-- local img = draw_helpers.img
-	-- local tr = draw_helpers.tr
+function draw.mini_tracker()
+	local config = core.config
+	local tidx = facility_updates.tidx
+	local color = draw_helpers.color
+	local img = draw_helpers.img
+	local tr = draw_helpers.tr
+	local mi = draw_helpers.mi
 	
-	-- local elements = {}
+	local direction    = config.mini_right and "left" or "right"
+	local bg_w         = mi.totalWidth * 1.5
+	local bg_x         = config.mini_right and draw_helpers.screen_w - bg_w + mi.margin * 0.5 or 0
+	local border_end   = config.mini_right and img.border_right or img.border_left
+	local end_border_x = config.mini_right and tr.end_border_x or 0
+	local border_neg   = tr.end_border_w - mi.margin * 0.283
 	
-	-- local direction    = config.mini_right and "left" or "right"
-	-- local bg_w         =  -- depends on elements
-	-- local bg_x         = config.mini_right and draw_helpers.screen_w - bg_w + tr.margin * 0.5 or 0
-	-- local border_end   = config.mini_right and img.border_right or img.border_left
-	-- local end_border_x = config.mini_right and tr.end_border_x or 0
-	-- local border_neg   = tr.end_border_w - tr.margin * 0.283
-	
-	-- draw_helpers.drawRectAlphaGradient(direction, 0.5, 0, tr.bg_color, bg_x, tr.bg_y, bg_w, tr.bg_h) -- background
-	-- d2d.image(border_end, end_border_x, tr.border_y, tr.end_border_w, tr.border_h, tr.opacity) -- border end
-	-- draw_helpers.drawRectAlphaGradient(direction, 0.5, border_neg, img.border_section, bg_x, tr.border_y, bg_w, tr.border_h, tr.opacity) -- border section
-	-- -- draw_helpers.drawElements
--- end
+	if tr.end_border_w < bg_w * 0.5 then
+		-- Draw the mini tracker
+		draw_helpers.drawRectAlphaGradient(direction, 0.5, 0, color.background, bg_x, tr.bg_y, bg_w, tr.bg_h, mi.opacity) -- background
+		d2d.image(border_end, end_border_x, tr.border_y, tr.end_border_w, tr.border_h, mi.opacity) -- border end
+		draw_helpers.drawRectAlphaGradient(direction, 0.5, border_neg, img.border_section, bg_x, tr.border_y, bg_w, tr.border_h, mi.opacity) -- border section
+		draw_helpers.drawElements(mi.elements, mi)
+	end
+end
 
 function draw.trades_ticker()
-	local ti = draw_helpers.ti
+	local config = core.config
 	local img = draw_helpers.img
+	local ti = draw_helpers.ti
 	
 	local ship_elements = {
 		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
@@ -125,15 +128,15 @@ function draw.trades_ticker()
 	local ticker_elements = {
 		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
 		{ type = "text",  value = "Here's a ticker." },
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
-		{ type = "table", value = ship_elements },
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
-		{ type = "table", value = trades_elements },
+		{ type = "icon",  value = img.ph_icon, width = ti.icon_d, draw = config.draw_ship },
+		{ type = "table", value = ship_elements, draw = config.draw_ship },
+		{ type = "icon",  value = img.ph_icon, width = ti.icon_d, draw = config.draw_trades },
+		{ type = "table", value = trades_elements, draw = config.draw_trades },
 		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
 		{ type = "text",  value = "And we loop around again." }
 	}
 	
-	ti.totalWidth = draw_helpers.measureElements(ticker_elements, ti, false) + ti.ex_gap
+	ti.totalWidth = draw_helpers.measureElements(ticker_elements, ti) + ti.ex_gap
 	if ti.scroll_offset > (draw_helpers.screen_w + ti.totalWidth) then
 		ti.scroll_offset = draw_helpers.screen_w
 	end
@@ -148,7 +151,7 @@ function draw.trades_ticker()
 		d2d.image(img.border_section, ti.sect_border_x, ti.border_y, ti.sect_border_w, ti.border_h, ti.opacity)
 	end
 	while ti.start_x < draw_helpers.screen_w do
-		draw_helpers.drawElements(ticker_elements, ti, false)
+		draw_helpers.drawElements(ticker_elements, ti)
 		ti.start_x = ti.start_x + ti.totalWidth
 	end
 end
@@ -162,32 +165,36 @@ function draw.system_clock()
 	local color = draw_helpers.color
 	local img = draw_helpers.img
 	local tr = draw_helpers.tr
+	local mi = draw_helpers.mi
 	local ti = draw_helpers.ti
 
-	local opacity       = config.ck_opacity * main_updates.fade_value_c
 	local text          = config.non_meridian_c and os.date("%H:%M") or os.date("%I:%M")
 	local margin        = main_updates.alt_tracker and tr.margin or ti.margin
 	local font_size     = main_updates.alt_tracker and tr.font.size or ti.font.size
 	local font          = d2d.Font.new("Segoe UI", font_size, true, false)
 	local txt_w         = font:measure(text)
-	local txt_x         = draw_helpers.screen_w - txt_w - margin
 	local txt_y         = main_updates.alt_tracker and tr.txt_y or ti.txt_y
-	local text_color    = draw_helpers.apply_opacity(color.clock_text, opacity)
-	local bg_w          = txt_w * 1.5
+	local tracker_w     = txt_w + mi.totalWidth + mi.gap
+	local bg_w          = (main_updates.alt_tracker and config.mini_tracker) and tracker_w * 1.5 or txt_w * 1.5
 	local bg_h          = main_updates.alt_tracker and tr.bg_h or ti.bg_h
 	local bg_x          = draw_helpers.screen_w - bg_w + margin * 0.5
-	local bg_color      = draw_helpers.apply_opacity(color.background, opacity)
 	local end_border_w  = main_updates.alt_tracker and tr.end_border_w or ti.end_border_w
 	local end_border_x  = main_updates.alt_tracker and tr.end_border_x or ti.end_border_x
 	local border_y      = main_updates.alt_tracker and tr.border_y or ti.border_y
 	local border_h      = main_updates.alt_tracker and tr.border_h or ti.border_h
 	local border_neg    = end_border_w - margin * 0.283
 	
+	mi.ck_opacity = config.ck_opacity * main_updates.fade_value_c
+	mi.ck_x       = draw_helpers.screen_w - txt_w - margin
+	
 	-- Draw the clock
-	draw_helpers.drawRectAlphaGradient("left", 0.5, 0, bg_color, bg_x, 0, bg_w, bg_h)
-	d2d.image(img.border_right, draw_helpers.screen_w - end_border_w, border_y, end_border_w, border_h, opacity * 0.82)
-	draw_helpers.drawRectAlphaGradient("left", 0.5, border_neg, img.border_section, bg_x, border_y, bg_w, border_h, opacity)
-	d2d.text(font, text, txt_x, txt_y, text_color)
+	draw_helpers.drawRectAlphaGradient("left", 0.5, 0, color.background, bg_x, 0, bg_w, bg_h, mi.ck_opacity)
+	d2d.image(img.border_right, draw_helpers.screen_w - end_border_w, border_y, end_border_w, border_h, mi.ck_opacity * 0.82)
+	draw_helpers.drawRectAlphaGradient("left", 0.5, border_neg, img.border_section, bg_x, border_y, bg_w, border_h, mi.ck_opacity)
+	d2d.text(font, text, mi.ck_x, txt_y, draw_helpers.apply_opacity(color.clock_text, mi.ck_opacity))
+	if main_updates.alt_tracker and config.mini_tracker then
+		draw_helpers.drawElements(mi.elements, mi)
+	end
 end
 
 function draw.moon_tracker()

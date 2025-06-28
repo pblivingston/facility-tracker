@@ -14,8 +14,8 @@ detect start menu for showing tracker
 - config window
 - added option for moon to match hub moon
 - moon now matches moon in quest
-- broke script into modules
-
+- organized script into modules
+- added option to show trackers with item slider
 
 
 draw helper functions

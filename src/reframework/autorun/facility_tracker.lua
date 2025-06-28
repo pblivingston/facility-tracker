@@ -86,25 +86,29 @@ d2d.register(
         draw_helpers.screen_scale = draw_helpers.screen_h / 2160.0
 		
 		draw_helpers.facility_tracker()
+		draw_helpers.mini_tracker()
+		print("progress")
 		draw_helpers.trades_ticker()
 		
-		if core.config.draw_tracker and not (core.config.auto_hide and main_updates.hide_tracker) then
+		if core.config.draw_tracker and not main_updates.hide_tracker then
 			if core.config.mini_tracker then
-				draw.mini_tracker()
+				if not (core.config.draw_clock and main_updates.alt_tracker) then
+					draw.mini_tracker()
+				end
 			else
 				draw.facility_tracker()
 			end
 		end
-		if core.config.draw_ticker and not (core.config.auto_hide_t and main_updates.hide_tracker) then
+		if core.config.draw_ticker and not main_updates.hide_ticker then
 			draw.trades_ticker()
 		end
-		if core.config.draw_voucher and not (core.config.auto_hide_v and main_updates.hide_tracker) then
+		if core.config.draw_voucher and not main_updates.hide_voucher then
 			draw.voucher_tracker()
 		end
-		if core.config.draw_clock and not (core.config.auto_hide_c and main_updates.hide_tracker) then
+		if core.config.draw_clock and not main_updates.hide_clock then
 			draw.system_clock()
 		end
-		if core.config.draw_moon and not (core.config.auto_hide_m and main_updates.hide_moon) then
+		if core.config.draw_moon and not main_updates.hide_moon then
 			draw.moon_tracker()
 		end
     end

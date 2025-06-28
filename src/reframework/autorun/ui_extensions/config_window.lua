@@ -11,7 +11,7 @@ local function re_ui_main(label, setting, hotkey)
 	
 	local cursor_pos = imgui.get_cursor_pos()
 	imgui.set_cursor_pos(Vector2f.new(re_ui.button_x, cursor_pos.y))
-	if imgui.button("Hotkey", Vector2f.new(re_ui.button_w, re_ui.button_h)) then
+	if imgui.button("Hotkey##" .. hotkey, Vector2f.new(re_ui.button_w, re_ui.button_h)) then
 		core.hotkeys[hotkey].listening = true
 		core.hotkeys[hotkey].message = "press a key..."
 	end
@@ -54,6 +54,13 @@ local function re_ui_slider(label, setting, low, high)
 	if dSld then core.config[setting] = sld; core.save_config() end
 end
 
+local function re_ui_combo(label, setting, options)
+	local index = core.get_index(options, core.config[setting])
+	local lbl = string.format("%s##%s", label, setting)
+	local dIdx, newIdx = imgui.combo(lbl, index, options)
+	if dIdx then core.config[setting] = options[newIdx]; core.save_config() end
+end
+
 function config_window.draw_config()
 	imgui.set_next_window_size(Vector2f.new(325, 500), 1 << 1)
 	if imgui.begin_window("Facility Tracker and UI Extensions", true) then
@@ -68,16 +75,28 @@ function config_window.draw_config()
 
 		if imgui.tree_node("Facility Tracker") then
 			re_ui_main("Display Tracker", "draw_tracker", "tr_hotkey")
-			imgui.separator()
 				imgui.begin_disabled(not core.config.draw_tracker)
+				imgui.separator()
 				local checkboxes = {
-					{ "Progress Bars",     "draw_bars"   },
-					{ "Timers",            "draw_timers" },
-					{ "Flags",             "draw_flags"  },
-					{ "Old Village Icons", "old_icons"   },
-					{ "Automatic Hiding",  "auto_hide"   }
+					{ "Progress Bars",         "draw_bars"     },
+					{ "Timers",                "draw_timers"   },
+					{ "Flags",                 "draw_flags"    },
+					{ "Old Village Icons",     "old_icons"     },
+					{ "Automatic Hiding",      "auto_hide"     },
+					{ "Show with Radial Menu", "tr_radialMenu" }
 				}
 				re_ui_checkboxes(checkboxes)
+					imgui.indent(re_ui.indent_w)
+					imgui.text("(Overrides Auto-Hide)")
+					imgui.unindent(re_ui.indent_w)
+				imgui.separator()
+				re_ui_main("Mini Tracker", "mini_tracker", "mi_hotkey")
+				if imgui.tree_node("Options") then
+					imgui.begin_disabled(not core.config.mini_tracker)
+					re_ui_checkbox("right", "mini_right")
+					imgui.end_disabled()
+					imgui.tree_pop()
+				end
 				imgui.separator()
 				re_ui_slider("Tracker Scale", "tr_user_scale", 0.0, 2.0)
 				re_ui_slider("Tracker Opacity", "tr_opacity", 0.0, 1.0)
@@ -91,11 +110,15 @@ function config_window.draw_config()
 			imgui.separator()
 				imgui.begin_disabled(not core.config.draw_ticker)
 				local checkboxes = {
-					{ "Include Ship",     "draw_ship"   },
-					{ "Include Trades",   "draw_trades" },
-					{ "Automatic Hiding", "auto_hide_t" }
+					{ "Include Ship",          "draw_ship"     },
+					{ "Include Trades",        "draw_trades"   },
+					{ "Automatic Hiding",      "auto_hide_t"   },
+					{ "Show with Radial Menu", "ti_radialMenu" }
 				}
 				re_ui_checkboxes(checkboxes)
+					imgui.indent(re_ui.indent_w)
+					imgui.text("(Overrides Auto-Hide)")
+					imgui.unindent(re_ui.indent_w)
 				imgui.separator()
 				re_ui_slider("Ticker Speed", "ti_speed_scale", 0.1, 3.0)
 				re_ui_slider("Ticker Scale", "ti_user_scale", 0.0, 2.0)
@@ -110,9 +133,13 @@ function config_window.draw_config()
 			imgui.separator()
 				imgui.begin_disabled(not core.config.draw_voucher)
 				local checkboxes = {
-					{ "Automatic Hiding", "auto_hide_c"    }
+					{ "Automatic Hiding",      "auto_hide_v"   },
+					{ "Show with Radial Menu", "vo_radialMenu" }
 				}
 				re_ui_checkboxes(checkboxes)
+					imgui.indent(re_ui.indent_w)
+					imgui.text("(Overrides Auto-Hide)")
+					imgui.unindent(re_ui.indent_w)
 				imgui.separator()
 				re_ui_slider("Voucher Scale", "ti_user_scale", 0.0, 2.0)
 				re_ui_slider("Voucher Opacity", "vo_opacity", 0.0, 1.0)
@@ -126,10 +153,14 @@ function config_window.draw_config()
 			imgui.separator()
 				imgui.begin_disabled(not core.config.draw_clock)
 				local checkboxes = {
-					{ "24-hour Clock",    "non_meridian_c" },
-					{ "Automatic Hiding", "auto_hide_c"    }
+					{ "24-hour Clock",         "non_meridian_c" },
+					{ "Automatic Hiding",      "auto_hide_c"    },
+					{ "Show with Radial Menu", "ck_radialMenu"  }
 				}
 				re_ui_checkboxes(checkboxes)
+					imgui.indent(re_ui.indent_w)
+					imgui.text("(Overrides Auto-Hide)")
+					imgui.unindent(re_ui.indent_w)
 				imgui.separator()
 				re_ui_slider("Clock Scale", "ti_user_scale", 0.0, 2.0)
 				re_ui_slider("Clock Opacity", "ck_opacity", 0.0, 1.0)
@@ -157,10 +188,8 @@ function config_window.draw_config()
 				"Don't show when:",
 				"Only show when:"
 			}
-			local show_index = core.get_index(show_when, core.config.show_when)
 			imgui.push_item_width(re_ui.font_size * 8.5)
-			local changed_idx, index = imgui.combo("##show_when", show_index, show_when)
-			if changed_idx then core.config.show_when = show_when[index]; core.save_config() end
+			re_ui_combo("", "show_when", show_when)
 			imgui.pop_item_width()
 				imgui.indent(re_ui.indent_w)
 				if core.config.show_when == "Don't show when:" then
@@ -201,10 +230,8 @@ function config_window.draw_config()
 						"Main moon",
 						"Nothing"
 					}
-					local show_index = core.get_index(hub_show, core.config.ghub_moon)
 					imgui.push_item_width(re_ui.font_size * 6)
-					local changed_idx, index = imgui.combo("##ghub_moon", show_index, hub_show)
-					if changed_idx then core.config.ghub_moon = hub_show[index]; core.save_config() end
+					re_ui_combo("", "ghub_moon", hub_show)
 					imgui.pop_item_width()
 					imgui.unindent(re_ui.indent_w)
 				imgui.text("")
