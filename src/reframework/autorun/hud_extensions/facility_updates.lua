@@ -1,5 +1,5 @@
-local core             = require("ui_extensions/core")
-local facility_helpers = require("ui_extensions/facility_helpers")
+local core             = require("hud_extensions/core")
+local facility_helpers = require("hud_extensions/facility_helpers")
 
 local facility_updates = {}
 
@@ -68,6 +68,7 @@ function facility_updates.get_ship_state()
 		facility_updates.leaving = countdown <= 1
     else
 		facility_updates.leaving = false
+		core.config.countdown = nil
 	end
 	previous_in_port = current_in_port
 	previous_day_count = current_day_count

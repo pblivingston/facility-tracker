@@ -1,4 +1,4 @@
-local core = require("ui_extensions/core")
+local core = require("hud_extensions/core")
 
 local facility_helpers = {}
 
@@ -51,10 +51,6 @@ function facility_helpers.get_box_msg(box)
 	local count = core.config.box_datas[box].count
 	local size  = core.config.box_datas[box].size
 	return string.format("%s: %d/%d", box, count, size)
-end
-
-function facility_helpers.is_box_full(box)
-	return core.config.box_datas[box].full
 end
 
 function facility_helpers.get_ship_message()

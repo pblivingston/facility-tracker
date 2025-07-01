@@ -1,4 +1,4 @@
-local core = require("ui_extensions/core")
+local core = require("hud_extensions/core")
 
 local main_updates = {}
 
@@ -84,10 +84,12 @@ function main_updates.get_midx()
 	local moon_data_success, main_moon_data = pcall(function() return moon_controller:get_field("_MainData") end)
 	local lmoon_data_success, lobby_moon_data = pcall(function() return moon_controller:get_field("_LobbyData") end)
 	local qmoon_data_success, quest_moon_data = pcall(function() return moon_controller:get_field("_QuestData") end)
+	--local smoon_data_success, story_moon_data = pcall(function() return moon_controller:get_field("_StoryData") end)
 	local moon_idx = moon_data_success and main_moon_data:call("get_MoonIdx")
 	local hubm_idx = lmoon_data_success and lobby_moon_data:call("get_MoonIdx")
 	local qstm_idx = qmoon_data_success and quest_moon_data:call("get_MoonIdx")
-	return main_updates.quest_moon and qstm_idx or (main_updates.ghub_moon and core.config.ghub_moon == "Hub moon") and hubm_idx or moon_idx
+	--local strm_idx = smoon_data_success and story_moon_data:call("get_MoonIdx")
+	main_updates.midx = main_updates.quest_moon and qstm_idx or (main_updates.ghub_moon and core.config.ghub_moon == "Hub moon") and hubm_idx or moon_idx
 end
 
 local function is_active_situation(situation)
@@ -260,17 +262,19 @@ function main_updates.get_hidden()
 	local hide_w_hud         = config.hide_w_hud and not (slider_visible or draw_w_bowling or draw_w_wrestle or draw_at_table or draw_at_camp or is_in_tent or map_open)
 	local auto_hide          = dont_show_hide or only_show_hide or hide_w_hud
 	
-	main_updates.alt_tracker  = map_open or is_in_tent
-	main_updates.hide_tracker = auto_hide and config.auto_hide and not (radial_visible and config.tr_radialMenu)
-	main_updates.hide_ticker  = auto_hide and config.auto_hide_t and not (radial_visible and config.ti_radialMenu)
-	main_updates.hide_voucher = auto_hide and config.auto_hide_v and not (radial_visible and config.vo_radialMenu)
-	main_updates.hide_clock   = auto_hide and config.auto_hide_c and not (radial_visible and config.ck_radialMenu)
+	main_updates.alt_tracker   = map_open or is_in_tent
+	main_updates.hide_tracker  = auto_hide and config.auto_hide and not (radial_visible and config.tr_radialMenu)
+	main_updates.hide_ticker   = auto_hide and config.auto_hide_t and not (radial_visible and config.ti_radialMenu)
+	main_updates.hide_voucher  = auto_hide and config.auto_hide_v and not (radial_visible and config.vo_radialMenu)
+	main_updates.hide_clock    = auto_hide and config.auto_hide_c and not (radial_visible and config.ck_radialMenu)
 	
-	main_updates.hide_moon    = config.auto_hide_m and not ((radar_open and slider_visible) or (map_open and previous_map_intrct) or previous_rest_open)
-	main_updates.moon_pos     = map_open and "map" or previous_rest_open and "rest" or "radar"
-	main_updates.quest_moon   = active_quest
+	main_updates.mini_override = (main_updates.alt_tracker and config.mi_tent_map) or (radial_visible and config.mi_radialMenu)
 	
-	main_updates.ghub_moon    = stage_id == stage_idx.g_hub
+	main_updates.hide_moon     = config.auto_hide_m and not ((radar_open and slider_visible) or (map_open and previous_map_intrct) or previous_rest_open)
+	main_updates.moon_pos      = map_open and "map" or previous_rest_open and "rest" or "radar"
+	main_updates.quest_moon    = active_quest
+	
+	main_updates.ghub_moon     = stage_id == stage_idx.g_hub
 	
 	if not config.auto_hide then main_updates.alt_tracker = false end
 	if not config.auto_hide_m then main_updates.moon_pos = "radar" end

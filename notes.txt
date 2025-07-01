@@ -1,7 +1,6 @@
 
-mini tracker
-moon on environment overview
 lucky voucher tracker
+moon on environment overview
 ancient wyvern coins in hub
 wishlist tracker
 ship/trades ticker
@@ -10,15 +9,9 @@ shares flag on items available
 detect start menu for showing tracker
 
 
-- added system clock
-- config window
-- added option for moon to match hub moon
-- moon now matches moon in quest
-- organized script into modules
-- added option to show trackers with item slider
 
 
-draw helper functions
+
 
 
 
