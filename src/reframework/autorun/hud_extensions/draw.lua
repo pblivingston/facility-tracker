@@ -197,9 +197,9 @@ function draw.system_clock()
 end
 
 function draw.moon_tracker()
+	if main_updates.midx == nil then print("midx is nil!"); return end
 	local config = core.config
 	local img = draw_helpers.img
-	
 	local moon   = img["moon_" .. tostring(main_updates.midx)]
 	local m_num  = img["m_num_" .. tostring(main_updates.midx)]
 	local moon_x = (main_updates.moon_pos == "map" and 16 or main_updates.moon_pos == "rest" and 4 or 4) * draw_helpers.screen_scale
@@ -210,7 +210,7 @@ function draw.moon_tracker()
 	
 	-- Draw the moon
 	d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, moon_a)
-	if not (main_updates.ghub_moon and config.ghub_moon == "Nothing" and main_updates.midx >= 0) then
+	if not (main_updates.ghub_moon and config.ghub_moon == "Nothing") and main_updates.midx >= 0 then
 		d2d.image(moon, moon_x, moon_y, moon_w, moon_h, moon_a)
 		if config.draw_m_num then
 			d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, moon_a)

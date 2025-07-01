@@ -25,26 +25,28 @@ re.on_frame(
 		
 		main_updates.time_delta()
 		
+		if not main_updates.is_active_player() then
+			facility_updates.first_run = true
+			main_updates.previous_hidden = true
+			main_updates.previous_fading = true
+            core.save_config()
+			return
+        end
+		
+		-- print("starting active-player updates!")
+		
 		main_updates.get_midx()
 		main_updates.get_fade()
 		main_updates.get_hidden()
 		
-        if main_updates.is_active_player() then
-			-- print("starting active-player updates!")
-			facility_updates.get_ration_state()
-			facility_updates.get_ship_state()
-			facility_updates.get_shares_state()
-			facility_updates.get_retrieval_state()
-			facility_updates.get_nest_state()
-			facility_updates.get_pugee_state()
-			
-			facility_updates.first_run = false
-		else
-            facility_updates.first_run = true
-			main_updates.previous_hidden = true
-			main_updates.previous_fading = true
-            core.save_config()
-        end
+		facility_updates.get_ration_state()
+		facility_updates.get_ship_state()
+		facility_updates.get_shares_state()
+		facility_updates.get_retrieval_state()
+		facility_updates.get_nest_state()
+		facility_updates.get_pugee_state()
+		
+		facility_updates.first_run = false
     end
 )
 
@@ -139,38 +141,37 @@ d2d.register(
 		}
     end,
     function()
+		if not main_updates.is_active_player() then return end
+		
 		-- print("starting draw!")
 		
 		draw_helpers.screen_w, draw_helpers.screen_h = d2d.surface_size()
         draw_helpers.screen_scale = draw_helpers.screen_h / 2160.0
 		
+		draw_helpers.facility_tracker()
+		draw_helpers.mini_tracker()
+		draw_helpers.trades_ticker()
+		
+		if core.config.draw_tracker and not main_updates.hide_tracker then
+			if core.config.mini_tracker and not main_updates.mini_override then
+				if not (core.config.draw_clock and main_updates.alt_tracker) then
+					draw.mini_tracker()
+				end
+			else
+				draw.facility_tracker()
+			end
+		end
+		if core.config.draw_ticker and not main_updates.hide_ticker then
+			draw.trades_ticker()
+		end
+		if core.config.draw_voucher and not main_updates.hide_voucher then
+			draw.voucher_tracker()
+		end
 		if core.config.draw_clock and not main_updates.hide_clock then
 			draw.system_clock()
 		end
-		if core.config.draw_moon and not (main_updates.hide_moon or main_updates == nil) then
+		if core.config.draw_moon and not (main_updates.hide_moon or main_updates.midx == nil) then
 			draw.moon_tracker()
-		end
-		
-		if main_updates.is_active_player() then
-			draw_helpers.facility_tracker()
-			draw_helpers.mini_tracker()
-			draw_helpers.trades_ticker()
-			
-			if core.config.draw_tracker and not main_updates.hide_tracker then
-				if core.config.mini_tracker and not main_updates.mini_override then
-					if not (core.config.draw_clock and main_updates.alt_tracker) then
-						draw.mini_tracker()
-					end
-				else
-					draw.facility_tracker()
-				end
-			end
-			if core.config.draw_ticker and not main_updates.hide_ticker then
-				draw.trades_ticker()
-			end
-			if core.config.draw_voucher and not main_updates.hide_voucher then
-				draw.voucher_tracker()
-			end
 		end
     end
 )
