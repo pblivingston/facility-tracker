@@ -129,49 +129,36 @@ function facility_updates.register_hooks()
 		function(retval, args)
 			local args = core.captured_args
 			local npc = sdk.to_managed_object(args[2])
-			if not npc then
-				print("Debug: NPC object is nil.")
-				return retval
-			end
-		
 			local npc_fixed_id = npc:get_field("NPCFixedId")
-			if not npc_fixed_id then
-				print("Debug: NPCFixedId is nil.")
-				return retval
-			end
-		
 			local npc_name = npc_names[npc_fixed_id]
 			if not npc_name then
 				print(string.format("Debug: NPCFixedId %d not found in npc_names table.", npc_fixed_id))
 				return retval
 			end
 		
-			local success_items, collection_items = pcall(function() return npc:call("getCollectionItems") end)
-			if success_items and collection_items and collection_items.get_size then
-				local size = collection_items:get_size()
-				local valid_count = 0
-		
-				for i = 0, size - 1 do
-					local item = collection_items:get_element(i)
-					if item then
-						local num = item:get_field("Num")
-						if num and num > 0 then
-							valid_count = valid_count + 1
-						end
+			local collection_items = npc:call("getCollectionItems")
+			local size = collection_items:get_size()
+			local valid_count = 0
+	
+			for i = 0, size - 1 do
+				local item = collection_items:get_element(i)
+				if item then
+					local num = item:get_field("Num")
+					if num and num > 0 then
+						valid_count = valid_count + 1
 					end
 				end
-
-				if not core.config.box_datas[npc_name] then
-					core.config.box_datas[npc_name] = {}
-				end
-
-				core.config.box_datas[npc_name].size  = size
-				core.config.box_datas[npc_name].count = valid_count
-				core.config.box_datas[npc_name].full  = valid_count == size
-				core.save_config()
-			else
-				print(string.format("Debug: Failed to retrieve collection items for NPC ID %d.", npc_fixed_id))
 			end
+
+			if not core.config.box_datas[npc_name] then
+				core.config.box_datas[npc_name] = {}
+			end
+
+			core.config.box_datas[npc_name].size  = size
+			core.config.box_datas[npc_name].count = valid_count
+			core.config.box_datas[npc_name].full  = valid_count == size
+			core.save_config()
+				
 			core.captured_args = nil
 			return retval
 		end
@@ -181,17 +168,29 @@ function facility_updates.register_hooks()
 		sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("clearCollectionItem"),
 		function(args)
 			local npc = sdk.to_managed_object(args[2])
-			if not npc then
-				print("Debug: NPC object is nil.")
-				return
-			end
-		
 			local npc_fixed_id = npc:get_field("NPCFixedId")
-			if not npc_fixed_id then
-				print("Debug: NPCFixedId is nil.")
+			local npc_name = npc_names[npc_fixed_id]
+			if not npc_name then
+				print(string.format("Debug: NPCFixedId %d not found in npc_names table.", npc_fixed_id))
 				return
 			end
-		
+
+			if not core.config.box_datas[npc_name] then
+				core.config.box_datas[npc_name] = {}
+			end
+
+			core.config.box_datas[npc_name].count = 0
+			core.config.box_datas[npc_name].full  = false
+			core.save_config()
+		end,
+		nil
+	)
+	-- Clear count on clearAllCollectionItem
+	sdk.hook(
+		sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("clearAllCollectionItem"),
+		function(args)
+			local npc = sdk.to_managed_object(args[2])
+			local npc_fixed_id = npc:get_field("NPCFixedId")
 			local npc_name = npc_names[npc_fixed_id]
 			if not npc_name then
 				print(string.format("Debug: NPCFixedId %d not found in npc_names table.", npc_fixed_id))

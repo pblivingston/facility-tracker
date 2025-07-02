@@ -34,7 +34,7 @@ re.on_frame(
         end
 		
 		-- print("starting active-player updates!")
-		
+
 		main_updates.get_midx()
 		main_updates.get_fade()
 		main_updates.get_hidden()

@@ -1,6 +1,12 @@
 local core = require("hud_extensions/core")
 
-local main_updates = {}
+local main_updates = {
+	dt           = 0,
+	fade_value   = 0,
+	fade_value_c = 0,
+	fade_value_v = 0,
+	fade_value_m = 0
+}
 
 local previous_time       = os.clock()
 local character           = nil
@@ -84,12 +90,12 @@ function main_updates.get_midx()
 	local moon_data_success, main_moon_data = pcall(function() return moon_controller:get_field("_MainData") end)
 	local lmoon_data_success, lobby_moon_data = pcall(function() return moon_controller:get_field("_LobbyData") end)
 	local qmoon_data_success, quest_moon_data = pcall(function() return moon_controller:get_field("_QuestData") end)
-	--local smoon_data_success, story_moon_data = pcall(function() return moon_controller:get_field("_StoryData") end)
+	local smoon_data_success, story_moon_data = pcall(function() return moon_controller:get_field("_StoryData") end)
 	local moon_idx = moon_data_success and main_moon_data:call("get_MoonIdx")
 	local hubm_idx = lmoon_data_success and lobby_moon_data:call("get_MoonIdx")
 	local qstm_idx = qmoon_data_success and quest_moon_data:call("get_MoonIdx")
-	--local strm_idx = smoon_data_success and story_moon_data:call("get_MoonIdx")
-	main_updates.midx = main_updates.quest_moon and qstm_idx or (main_updates.ghub_moon and core.config.ghub_moon == "Hub moon") and hubm_idx or moon_idx
+	local strm_idx = smoon_data_success and story_moon_data:call("get_MoonIdx")
+	main_updates.midx = (main_updates.active_quest and strm_idx >= 0) and strm_idx or main_updates.active_quest and qstm_idx or (main_updates.in_grand_hub and core.config.ghub_moon == "Hub moon") and hubm_idx or moon_idx
 end
 
 local function is_active_situation(situation)
@@ -223,19 +229,20 @@ function main_updates.get_hidden()
 		previous_camp_sit = current_camp_sit
 	end
 	
+	main_updates.active_quest = mission_manager:call("get_IsActiveQuest")
+	
+	local quest_end          = mission_manager:call("get_IsQuestEndShowing")
 	local stage_id           = environment_manager:get_field("_CurrentStage")
 	local is_in_tent         = character:call("get_IsInAllTent")
 	local map_open           = (cur_map_flow == "Active" or cur_map_flow == "CloseModel")
 	local in_training        = stage_id == stage_idx.training and not (is_in_tent or map_open)
 	local radar_open         = (cur_map_flow == "RadarActive" or cur_map_flow == "WaitOpenReq" or cur_map_flow == "CloseRadarModel" or (cur_map_flow == "OpenRadar" and not map_proc)) and not (in_training or previous_arm_wrest)
-	local active_quest       = mission_manager:call("get_IsActiveQuest")
-	local quest_end          = mission_manager:call("get_IsQuestEndShowing")
 	local in_base_camp       = character:call("get_IsInBaseCamp") and not (is_in_tent or map_open)
 	local in_life_area       = character:call("get_IsInLifeArea") and not (is_in_tent or map_open or in_base_camp)
 	local in_combat          = character:call("get_IsCombat")
 	local half_combat        = character:call("get_IsHalfCombat")
 	local is_bowling         = minigame_manager:get_field("_Bowling"):call("get_IsPlaying")
-	local quest_combat       = active_quest and in_combat
+	local quest_combat       = main_updates.active_quest and in_combat
 	
 	local draw_w_bowling     = is_bowling and radar_open and not config.hide_w_bowling
 	local draw_w_wrestle     = previous_arm_wrest and not config.hide_w_wrestle
@@ -245,10 +252,10 @@ function main_updates.get_hidden()
 	local dont_show          = config.show_when == "Don't show when:"
 	local hide_in_tent       = is_in_tent and config.hide_in_tent
 	local hide_on_map        = map_open and config.hide_on_map
-	local hide_in_quest      = active_quest and config.hide_in_quest and not config.hide_in_qstcbt
+	local hide_in_quest      = main_updates.active_quest and config.hide_in_quest and not config.hide_in_qstcbt
 	local hide_in_combat     = in_combat and config.hide_in_combat and not config.hide_in_qstcbt
 	local hide_in_qstcbt     = quest_combat and config.hide_in_qstcbt
-	local hide_in_hlfcbt     = half_combat and config.hide_in_hlfcbt and (config.hide_in_combat or (active_quest and config.hide_in_qstcbt))
+	local hide_in_hlfcbt     = half_combat and config.hide_in_hlfcbt and (config.hide_in_combat or (main_updates.active_quest and config.hide_in_qstcbt))
 
 	local only_show          = config.show_when == "Only show when:"
 	local draw_in_tent       = is_in_tent and config.draw_in_tent
@@ -272,16 +279,14 @@ function main_updates.get_hidden()
 	
 	main_updates.hide_moon     = config.auto_hide_m and not ((radar_open and slider_visible) or (map_open and previous_map_intrct) or previous_rest_open)
 	main_updates.moon_pos      = map_open and "map" or previous_rest_open and "rest" or "radar"
-	main_updates.quest_moon    = active_quest
 	
-	main_updates.ghub_moon     = stage_id == stage_idx.g_hub
+	main_updates.in_grand_hub  = stage_id == stage_idx.g_hub
 	
 	if not config.auto_hide then main_updates.alt_tracker = false end
 	if not config.auto_hide_m then main_updates.moon_pos = "radar" end
 	
 	current_map_intrct = false
 	slider_visible = false
-	radial_visible = false
 end
 
 function main_updates.register_hooks()
@@ -298,8 +303,12 @@ function main_updates.register_hooks()
 		function(args) current_map_intrct = true end, nil
 	)
 	sdk.hook(
-		sdk.find_type_definition("app.GUI020006"):get_method("isItemAllSlider"),
+		sdk.find_type_definition("app.GUI020008"):get_method("onHudOpen"),
 		function(args) radial_visible = true end, nil
+	)
+	sdk.hook(
+		sdk.find_type_definition("app.GUI020008"):get_method("onHudClose"),
+		function(args) radial_visible = false end, nil
 	)
 	sdk.hook(
 		sdk.find_type_definition("app.GUI020006PartsAllSliderItem"):get_method("update"),

@@ -278,9 +278,9 @@ function draw_helpers.drawElements(elements, data, scaling)
 				local timer_value = facility_helpers.get_timer(elem.timer)
 				local progress = 1 - math.max(0, math.min(1, timer_value / elem.cap))
 				local bar_w = data.icon_d * 0.75
-				local bar_h = data.icon_d / 25
-				local bar_x = xPos + data.margin * 1.85
-				local bar_y = main_updates.alt_tracker and data.txt_y + bar_h * 2 or data.txt_y + data.icon_d - bar_h * 0.75
+				local bar_h = data.icon_d * 0.05
+				local bar_x = xPos + data.margin * 1.6
+				local bar_y = main_updates.alt_tracker and data.txt_y + bar_h * 2.5 or data.txt_y + data.icon_d - bar_h * 1.5
 				local fill_w = bar_w * progress
 				d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, draw_helpers.apply_opacity(draw_helpers.color.background, data.opacity))
 				if elem.flag then
