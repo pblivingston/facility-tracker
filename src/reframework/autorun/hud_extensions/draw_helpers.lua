@@ -1,7 +1,7 @@
 local core             = require("hud_extensions/core")
-local main_updates     = require("hud_extensions/main_updates")
 local facility_helpers = require("hud_extensions/facility_helpers")
 local facility_updates = require("hud_extensions/facility_updates")
+local main_updates     = require("hud_extensions/main_updates")
 
 local draw_helpers = {}
 
@@ -21,6 +21,210 @@ local count_scale = 0.68
 		-- draw_helpers.img[name] = d2d.Image.new(path)
 	-- end
 -- end
+
+function draw_helpers.apply_opacity(argb, opacity)
+    local a     = (argb >> 24) & 0xFF
+    local rgb   = argb & 0x00FFFFFF
+    local new_a = math.floor(a * opacity)
+    return (new_a << 24) | rgb
+end
+
+function draw_helpers.shadow_text(font, text, x, y, text_color, shad_color)
+	local reg_font = d2d.Font.new(font.name, font.size, font.bold, font.italic)
+	local shad_dist = font.size * 0.1
+	for dx = -shad_dist, shad_dist do
+		for dy = -shad_dist, shad_dist do
+			if dx ~= 0 or dy ~= 0 then
+				local dist = math.sqrt(dx*dx + dy*dy)
+				if dist <= shad_dist then
+					local shad_frac = 1 - dist / shad_dist
+					local alpha = core.ease_in_out(shad_frac)
+					local color = draw_helpers.apply_opacity(shad_color, alpha)
+					d2d.text(reg_font, text, x + dx, y + dy, color)
+				end
+			end
+		end
+	end
+	d2d.text(reg_font, text, x, y, text_color)
+end
+
+function draw_helpers.drawRectAlphaGradient(direction, offset, negative, element, pos_x, pos_y, width, height, alpha)
+    local is_vertical = (direction == "up" or direction == "down")
+    local is_reverse = (direction == "up" or direction == "left")
+    local rect_len = is_vertical and height or width
+    local neg = negative / (rect_len - 1)
+
+    local is_color = type(element) == "number" and element >= 0 and element <= 0xFFFFFFFF
+
+    local is_img = false
+    if not is_color and draw_helpers.img then
+        for _,v in pairs(draw_helpers.img) do
+            if v == element then is_img = true break end
+        end
+    end
+
+    if not (is_color or is_img) then
+        print("drawRectAlphaGradient error: element is not a color or an image!")
+        return
+    end
+
+    for i = 0, rect_len - 1 do
+        local frac = i / (rect_len - 1)
+        if is_reverse then frac = 1 - frac end
+        local grad_frac = 1 - (frac - offset) / (1 - offset)
+        local grad_opacity = frac < neg and 0 or frac < offset and 1 or core.ease_in_out(grad_frac)
+		local opacity = grad_opacity * alpha
+
+        if is_color then
+            local line_color = draw_helpers.apply_opacity(element, opacity)
+            if is_vertical then
+                d2d.line(pos_x, pos_y + i, pos_x + width, pos_y + i, 1.2, line_color)
+            else
+                d2d.line(pos_x + i, pos_y, pos_x + i, pos_y + height, 1.2, line_color)
+            end
+        elseif is_img then
+            if is_vertical then
+                d2d.image(element, pos_x, pos_y + i, width, 1, opacity)
+            else
+                d2d.image(element, pos_x + i, pos_y, 1, height, opacity)
+            end
+        end
+    end
+end
+
+function draw_helpers.measureElements(elements, data, scaling)
+    local totalWidth = 0
+    for i, elem in ipairs(elements) do
+		if elem.draw == false then goto continue end
+        if elem.type == "text" then
+			local text_font = d2d.Font.new(data.font.name, data.font.size, data.font.bold, data.font.italic)
+            elem.measured_width = text_font:measure(elem.value)
+        elseif elem.type == "icon" then
+			elem.measured_width = scaling and elem.width * table_scale or elem.width
+		elseif elem.type == "table" then
+			local tbl_data = {}
+            tbl_data.font = {
+				name   = data.font.name,
+				size   = data.font.size * table_scale,
+				bold   = data.font.bold,
+				italic = data.font.italic
+			}
+            tbl_data.gap = data.gap * table_scale
+            elem.measured_width = draw_helpers.measureElements(elem.value, tbl_data, true)
+        end
+        totalWidth = totalWidth + elem.measured_width + data.gap
+		::continue::
+    end
+    return totalWidth - data.gap
+end
+
+function draw_helpers.drawElements(elements, data, scaling)
+	local config = core.config
+	local xPos = data.start_x
+    for i, elem in ipairs(elements) do
+		if elem.draw == false then goto continue end
+		local ref_font = d2d.Font.new(data.font.name, data.font.size, data.font.bold, data.font.italic)
+		local _, ref_char_h = ref_font:measure("A")
+		local shad_color = draw_helpers.apply_opacity(draw_helpers.color.shadow, data.opacity)
+		--local shad_dist = data.font.size * 0.068
+        if elem.type == "text" then
+			--local text_font = d2d.Font.new(data.font.name, data.font.size, data.font.bold, data.font.italic)
+			local text_font = {
+				name   = data.font.name,
+				size   = data.font.size,
+				bold   = data.font.bold,
+				italic = data.font.italic
+			}
+			local text_color = draw_helpers.apply_opacity(draw_helpers.color.text, data.opacity)
+            --d2d.text(text_font, elem.value, xPos, data.txt_y, draw_helpers.apply_opacity(draw_helpers.color.text, data.opacity))
+			draw_helpers.shadow_text(text_font, elem.value, xPos, data.txt_y, text_color, shad_color)
+            xPos = xPos + elem.measured_width + data.gap
+        elseif elem.type == "icon" then
+            local drawW = scaling and elem.width * table_scale or elem.width
+			if elem.frame then
+				d2d.image(draw_helpers.img.frame_l, xPos, data.icon_y, drawW, data.icon_d, data.opacity)
+			end
+            d2d.image(elem.value, xPos, data.icon_y, drawW, data.icon_d, data.opacity)
+			if elem.flag and config.draw_flags then
+				local flagX = xPos - drawW / 2 + data.margin * 1.5
+				local flagY = main_updates.alt_tracker and data.icon_y - data.margin * 2.1 or data.icon_y - data.icon_d / 2 + data.margin * 1.2
+				d2d.image(draw_helpers.img.flag, flagX, flagY, drawW, data.icon_d, data.opacity)
+			end
+			if elem.count ~= nil and config.mini_counts then
+				--local count_font = d2d.Font.new(data.font.name, data.font.size * count_scale, true, false)
+				local count_font = {
+					name   = data.font.name,
+					size   = data.font.size * count_scale,
+					bold   = true,
+					italic = false
+				}
+				local count = tostring(elem.count)
+				local ref_w = ref_font:measure(count)
+				local count_w = ref_w * count_scale
+				local count_h = ref_char_h * count_scale
+				local count_x = xPos + data.icon_d - data.margin * 1.5 - count_w * 0.5
+				local count_y = main_updates.alt_tracker and data.txt_y + data.margin * 0.5 or data.txt_y + data.margin * 2.2 - count_h * 0.5
+				local count_color = elem.flag and draw_helpers.color.full_text or draw_helpers.color.count_text
+				local text_color = draw_helpers.apply_opacity(count_color, data.opacity)
+				draw_helpers.shadow_text(count_font, count, count_x, count_y, text_color, shad_color)
+			end
+			if elem.timer ~= nil and config.draw_timers then
+				--local timer_font = d2d.Font.new(data.font.name, data.font.size * timer_scale, false, false)
+				local timer_font = {
+					name   = data.font.name,
+					size   = data.font.size * timer_scale,
+					bold   = false,
+					italic = false
+				}
+				local timer_x = xPos + data.margin * 1.5
+				local timer_char_h = ref_char_h * timer_scale
+				local timer_y = data.txt_y + ref_char_h - timer_char_h - data.margin * 0.25
+				local timer_bg_y = timer_y + data.margin * 1.3
+				local timer_msg = facility_helpers.get_timer_msg(elem.timer)
+				local ref_w = ref_font:measure(timer_msg)
+				local timer_bg_w = ref_w * timer_scale
+				local timer_bg_h = timer_char_h - data.margin * 2.2
+				local text_color = draw_helpers.apply_opacity(draw_helpers.color.timer_text, data.opacity)
+				d2d.fill_rect(timer_x, timer_bg_y, timer_bg_w, timer_bg_h, draw_helpers.apply_opacity(draw_helpers.color.background, data.opacity))
+				draw_helpers.shadow_text(timer_font, timer_msg, timer_x, timer_y, text_color, shad_color)
+			end
+			if elem.timer ~= nil and elem.cap ~= nil and config.draw_bars then
+				local timer_value = facility_helpers.get_timer(elem.timer)
+				local progress = 1 - math.max(0, math.min(1, timer_value / elem.cap))
+				local bar_w = data.icon_d * 0.75
+				local bar_h = data.icon_d * 0.05
+				local bar_x = xPos + data.margin * 1.6
+				local bar_y = main_updates.alt_tracker and data.txt_y + bar_h * 2.5 or data.txt_y + data.icon_d - bar_h * 1.5
+				local fill_w = bar_w * progress
+				d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, draw_helpers.apply_opacity(draw_helpers.color.background, data.opacity))
+				if elem.flag then
+					d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, draw_helpers.apply_opacity(draw_helpers.color.full_bar, data.opacity))
+				else
+					d2d.fill_rect(bar_x, bar_y, fill_w, bar_h, draw_helpers.apply_opacity(draw_helpers.color.prog_bar, data.opacity))
+				end
+			end
+            xPos = xPos + elem.measured_width + data.gap
+		elseif elem.type == "table" then
+			local tbl_data = {}
+			tbl_data.font = {
+				name   = data.font.name,
+				size   = data.font.size * table_scale,
+				bold   = data.font.bold,
+				italic = data.font.italic
+			}
+			tbl_data.start_x = xPos
+            tbl_data.txt_y   = data.txt_y + (ref_char_h - ref_char_h * table_scale) / 2
+			tbl_data.opacity = data.opacity
+            tbl_data.gap     = data.gap * table_scale
+			tbl_data.icon_d  = data.icon_d * table_scale
+            tbl_data.icon_y  = data.icon_y + (data.icon_d - tbl_data.icon_d) * 5/8
+			tbl_data.margin  = data.margin * table_scale
+            xPos = draw_helpers.drawElements(elem.value, tbl_data, true)
+        end
+		::continue::
+    end
+    return xPos
+end
 
 function draw_helpers.facility_tracker()
 	local config = core.config
@@ -60,7 +264,8 @@ end
 
 function draw_helpers.mini_tracker()
 	local config = core.config
-	local tidx = facility_updates.tidx
+	local savedata = core.savedata
+	local tidx = core.tidx
 	local img = draw_helpers.img
 	local tr = draw_helpers.tr
 	local mi = draw_helpers.mi or { ck_opacity = 1, ck_x = 0 }
@@ -74,28 +279,28 @@ function draw_helpers.mini_tracker()
 	mi.margin  = tr.margin
 	
 	local npc_counts = {
-		config.box_datas.Rysher.count,
-		config.box_datas.Murtabak.count,
-		config.box_datas.Apar.count,
-		config.box_datas.Plumpeach.count,
-		config.box_datas.Sabar.count
+		savedata.retrieval.Rysher.count,
+		savedata.retrieval.Murtabak.count,
+		savedata.retrieval.Apar.count,
+		savedata.retrieval.Plumpeach.count,
+		savedata.retrieval.Sabar.count
 	}
 	local retrieval_count = math.max(table.unpack(npc_counts))
 	
-	local draw_ship = config.mini_ship == "Always" or (config.mini_ship == "In Port" and facility_helpers.is_in_port) or (config.mini_ship == "Near Departure" and facility_updates.leaving)
-	local draw_ration = config.mini_ration == "Always" or (config.mini_ration == "Available" and config.box_datas.Rations.count > 0) or (config.mini_ration == "Full" and config.box_datas.Rations.full)
-	local draw_retrieval = config.mini_retrieval == "Always" or (config.mini_retrieval == "Available" and retrieval_count > 0) or (config.mini_retrieval == "Full" and config.box_datas.retrieval.full)
-	local draw_shares = config.mini_shares == "Always" or (config.mini_shares == "Available" and config.box_datas.Shares.count > 0) or (config.mini_shares == "Full" and config.box_datas.Shares.full)
-	local draw_nest = config.mini_nest == "Always" or (config.mini_nest == "Available" and config.box_datas.Nest.count > 0) or (config.mini_nest == "Full" and config.box_datas.Nest.full)
-	local draw_pugee = config.mini_pugee == "Always" or (config.mini_pugee == "Available" and config.box_datas.pugee.full)
+	local draw_ship = config.mini_ship == "Always" or (config.mini_ship == "In Port" and savedata.ship.is_in_port) or (config.mini_ship == "Near Departure" and savedata.ship.leaving)
+	local draw_ration = config.mini_ration == "Always" or (config.mini_ration == "Available" and savedata.Rations.count > 0) or (config.mini_ration == "Full" and savedata.Rations.full)
+	local draw_retrieval = config.mini_retrieval == "Always" or (config.mini_retrieval == "Available" and retrieval_count > 0) or (config.mini_retrieval == "Full" and savedata.retrieval.full)
+	local draw_shares = config.mini_shares == "Always" or (config.mini_shares == "Available" and savedata.Shares.count > 0) or (config.mini_shares == "Full" and savedata.Shares.full)
+	local draw_nest = config.mini_nest == "Always" or (config.mini_nest == "Available" and savedata.Nest.count > 0) or (config.mini_nest == "Full" and savedata.Nest.full)
+	local draw_pugee = config.mini_pugee == "Always" or (config.mini_pugee == "Available" and savedata.pugee.full)
 	
 	mi.elements = {
-		{ type = "icon",  value = img.ship, width = mi.icon_d, count = config.countdown, flag = facility_updates.leaving, draw = draw_ship },
-		{ type = "icon",  value = img.rations, width = mi.icon_d, count = config.box_datas.Rations.count, timer = tidx.ration, cap = config.box_datas.Rations.timer, flag = config.box_datas.Rations.full, draw = draw_ration },
-		{ type = "icon",  value = img.retrieval, width = mi.icon_d, count = retrieval_count, flag = config.box_datas.retrieval.full, draw = draw_retrieval },
-		{ type = "icon",  value = img.workshop, width = mi.icon_d, count = config.box_datas.Shares.count, flag = config.box_datas.Shares.full, draw = draw_shares },
-		{ type = "icon",  value = img.nest, width = mi.icon_d, timer = tidx.nest, cap = config.box_datas.Nest.timer, count = config.box_datas.Nest.count, flag = config.box_datas.Nest.full, draw = draw_nest },
-		{ type = "icon",  value = img.pugee, width = mi.icon_d, timer = tidx.pugee, cap = config.box_datas.pugee.timer, flag = config.box_datas.pugee.full, draw = draw_pugee }
+		{ type = "icon",  value = img.ship, width = mi.icon_d, count = savedata.ship.countdown, flag = savedata.ship.leaving, draw = draw_ship },
+		{ type = "icon",  value = img.rations, width = mi.icon_d, count = savedata.Rations.count, timer = tidx.ration, cap = savedata.Rations.timer, flag = savedata.Rations.full, draw = draw_ration },
+		{ type = "icon",  value = img.retrieval, width = mi.icon_d, count = retrieval_count, flag = savedata.retrieval.full, draw = draw_retrieval },
+		{ type = "icon",  value = img.workshop, width = mi.icon_d, count = savedata.Shares.count, flag = savedata.Shares.full, draw = draw_shares },
+		{ type = "icon",  value = img.nest, width = mi.icon_d, timer = tidx.nest, cap = savedata.Nest.timer, count = savedata.Nest.count, flag = savedata.Nest.full, draw = draw_nest },
+		{ type = "icon",  value = img.pugee, width = mi.icon_d, timer = tidx.pugee, cap = savedata.pugee.timer, flag = savedata.pugee.full, draw = draw_pugee }
 	}
 	
 	mi.totalWidth = draw_helpers.measureElements(mi.elements, mi)
@@ -146,170 +351,6 @@ function draw_helpers.trades_ticker()
 	ti.sect_border_w = draw_helpers.screen_w - ti.end_border_w - ti.sect_border_x + ti.margin
 	
 	draw_helpers.ti = ti
-end
-
-function draw_helpers.apply_opacity(argb, opacity)
-    local a     = (argb >> 24) & 0xFF
-    local rgb   = argb & 0x00FFFFFF
-    local new_a = math.floor(a * opacity)
-    return (new_a << 24) | rgb
-end
-
-function draw_helpers.drawRectAlphaGradient(direction, offset, negative, element, pos_x, pos_y, width, height, alpha)
-    local is_vertical = (direction == "up" or direction == "down")
-    local is_reverse = (direction == "up" or direction == "left")
-    local rect_len = is_vertical and height or width
-    local neg = negative / (rect_len - 1)
-
-    local is_color = type(element) == "number" and element >= 0 and element <= 0xFFFFFFFF
-
-    local is_img = false
-    if not is_color and draw_helpers.img then
-        for _,v in pairs(draw_helpers.img) do
-            if v == element then is_img = true break end
-        end
-    end
-
-    if not (is_color or is_img) then
-        print("drawRectAlphaGradient error: element is not a color or an image!")
-        return
-    end
-
-    for i = 0, rect_len - 1 do
-        local frac = i / (rect_len - 1)
-        if is_reverse then frac = 1 - frac end
-        local grad_frac = (frac - offset) / (1 - offset)
-        local grad_opacity = frac < neg and 0 or frac < offset and 1 or 1 - grad_frac^2 / (2 * (grad_frac^2 - grad_frac) + 1)
-		local opacity = grad_opacity * alpha
-
-        if is_color then
-            local line_color = draw_helpers.apply_opacity(element, opacity)
-            if is_vertical then
-                d2d.line(pos_x, pos_y + i, pos_x + width, pos_y + i, 1.2, line_color)
-            else
-                d2d.line(pos_x + i, pos_y, pos_x + i, pos_y + height, 1.2, line_color)
-            end
-        elseif is_img then
-            if is_vertical then
-                d2d.image(element, pos_x, pos_y + i, width, 1, opacity)
-            else
-                d2d.image(element, pos_x + i, pos_y, 1, height, opacity)
-            end
-        end
-    end
-end
-
-function draw_helpers.measureElements(elements, data, scaling)
-    local totalWidth = 0
-    for i, elem in ipairs(elements) do
-		if elem.draw == false then goto continue end
-		local text_font = d2d.Font.new(data.font.name, data.font.size, data.font.bold, data.font.italic)
-		local timer_font = d2d.Font.new(data.font.name, data.font.size * timer_scale, data.font.bold, data.font.italic)
-        if elem.type == "text" then
-            elem.measured_width = text_font:measure(elem.value)
-        elseif elem.type == "icon" then
-			elem.measured_width = scaling and elem.width * table_scale or elem.width
-		elseif elem.type == "table" then
-			local tbl_data = {}
-            tbl_data.font = {
-				name   = data.font.name,
-				size   = data.font.size * table_scale,
-				bold   = data.font.bold,
-				italic = data.font.italic
-			}
-            tbl_data.gap = data.gap * table_scale
-            elem.measured_width = draw_helpers.measureElements(elem.value, tbl_data, true)
-        end
-        totalWidth = totalWidth + elem.measured_width + data.gap
-		::continue::
-    end
-    return totalWidth - data.gap
-end
-
-function draw_helpers.drawElements(elements, data, scaling)
-	local config = core.config
-	local xPos = data.start_x
-    for i, elem in ipairs(elements) do
-		if elem.draw == false then goto continue end
-		local text_font = d2d.Font.new(data.font.name, data.font.size, data.font.bold, data.font.italic)
-		local timer_font = d2d.Font.new(data.font.name, data.font.size * timer_scale, false, false)
-		local count_font = d2d.Font.new(data.font.name, data.font.size * count_scale, true, false)
-		local ref_char_w, ref_char_h = text_font:measure("A")
-        if elem.type == "text" then
-            d2d.text(text_font, elem.value, xPos, data.txt_y, draw_helpers.apply_opacity(draw_helpers.color.text, data.opacity))
-            xPos = xPos + elem.measured_width + data.gap
-        elseif elem.type == "icon" then
-            local drawW = scaling and elem.width * table_scale or elem.width
-			if elem.frame then
-				d2d.image(draw_helpers.img.frame_l, xPos, data.icon_y, drawW, data.icon_d, data.opacity)
-			end
-            d2d.image(elem.value, xPos, data.icon_y, drawW, data.icon_d, data.opacity)
-			if elem.flag and config.draw_flags then
-				local flagX = xPos - drawW / 2 + data.margin * 1.5
-				local flagY = main_updates.alt_tracker and data.icon_y - data.margin * 2.1 or data.icon_y - data.icon_d / 2 + data.margin * 1.2
-				d2d.image(draw_helpers.img.flag, flagX, flagY, drawW, data.icon_d, data.opacity)
-			end
-			if elem.count ~= nil and config.mini_counts then
-				local count = tostring(elem.count)
-				local count_w = count_font:measure(count)
-				local count_h = ref_char_h * count_scale
-				local count_x = xPos + data.icon_d - data.margin * 1.5 - count_w * 0.5
-				local count_y = main_updates.alt_tracker and data.txt_y + data.margin * 0.5 or data.txt_y + data.margin * 2.2 - count_h * 0.5
-				local count_bg_w = count_w + data.margin * 0.3
-				local count_bg_h = count_h - data.margin * 3.8
-				local count_bg_x = count_x - data.margin * 0.15
-				local count_bg_y = count_y + data.margin * 2.4
-				local count_color = elem.flag and draw_helpers.color.full_text or draw_helpers.color.count_text
-				d2d.fill_rect(count_bg_x, count_bg_y, count_bg_w, count_bg_h, draw_helpers.apply_opacity(draw_helpers.color.background, data.opacity))
-				d2d.text(count_font, count, count_x, count_y, draw_helpers.apply_opacity(count_color, data.opacity))
-			end
-			if elem.timer ~= nil and config.draw_timers then	
-				local timer_x = xPos + data.margin * 1.5
-				local timer_char_h = ref_char_h * timer_scale
-				local timer_y = data.txt_y + ref_char_h - timer_char_h - data.margin * 0.25
-				local timer_bg_y = timer_y + data.margin * 0.8
-				local timer_msg = facility_helpers.get_timer_msg(elem.timer)
-				local timer_bg_w = timer_font:measure(timer_msg)
-				local timer_bg_h = timer_char_h - data.margin
-				d2d.fill_rect(timer_x, timer_bg_y, timer_bg_w, timer_bg_h, draw_helpers.apply_opacity(draw_helpers.color.background, data.opacity))
-				d2d.text(timer_font, timer_msg, timer_x, timer_y, draw_helpers.apply_opacity(draw_helpers.color.timer_text, data.opacity))
-			end
-			if elem.timer ~= nil and elem.cap ~= nil and config.draw_bars then
-				local timer_value = facility_helpers.get_timer(elem.timer)
-				local progress = 1 - math.max(0, math.min(1, timer_value / elem.cap))
-				local bar_w = data.icon_d * 0.75
-				local bar_h = data.icon_d * 0.05
-				local bar_x = xPos + data.margin * 1.6
-				local bar_y = main_updates.alt_tracker and data.txt_y + bar_h * 2.5 or data.txt_y + data.icon_d - bar_h * 1.5
-				local fill_w = bar_w * progress
-				d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, draw_helpers.apply_opacity(draw_helpers.color.background, data.opacity))
-				if elem.flag then
-					d2d.fill_rect(bar_x, bar_y, bar_w, bar_h, draw_helpers.apply_opacity(draw_helpers.color.full_bar, data.opacity))
-				else
-					d2d.fill_rect(bar_x, bar_y, fill_w, bar_h, draw_helpers.apply_opacity(draw_helpers.color.prog_bar, data.opacity))
-				end
-			end
-            xPos = xPos + elem.measured_width + data.gap
-		elseif elem.type == "table" then
-			local tbl_data = {}
-			tbl_data.font = {
-				name   = data.font.name,
-				size   = data.font.size * table_scale,
-				bold   = data.font.bold,
-				italic = data.font.italic
-			}
-			tbl_data.start_x = xPos
-            tbl_data.txt_y   = data.txt_y + (ref_char_h - ref_char_h * table_scale) / 2
-			tbl_data.opacity = data.opacity
-            tbl_data.gap     = data.gap * table_scale
-			tbl_data.icon_d  = data.icon_d * table_scale
-            tbl_data.icon_y  = data.icon_y + (data.icon_d - tbl_data.icon_d) * 5/8
-			tbl_data.margin  = data.margin * table_scale
-            xPos = draw_helpers.drawElements(elem.value, tbl_data, true)
-        end
-		::continue::
-    end
-    return xPos
 end
 
 return draw_helpers

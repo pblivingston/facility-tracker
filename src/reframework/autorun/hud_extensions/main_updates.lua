@@ -1,4 +1,6 @@
-local core = require("hud_extensions/core")
+local core             = require("hud_extensions/core")
+local voucher_updates  = require("hud_extensions/voucher_updates")
+local facility_updates = require("hud_extensions/facility_updates")
 
 local main_updates = {
 	dt           = 0,
@@ -35,34 +37,12 @@ local wrestle_i_delay     = 1.75
 local rest_io_delay       = 0.18
 local camp_i_delay        = 0.05
 
-local situations = {
-	arm_wrestling = 42,
-	table_sitting = 43
-}
-
-local stage_idx = {
-	plains   = 0,
-	forest   = 1,
-	basin    = 2,
-	cliffs   = 3,
-	ruins    = 4,
-	trail    = 5,
-	tunnel   = 6,
-	l_path   = 7,
-	approach = 8,
-	arena    = 9,
-	peak     = 10,
-	suja     = 12,
-	g_hub    = 14,
-	training = 15
-}
-
-local environment_manager = sdk.get_managed_singleton("app.EnvironmentManager")
-local mission_manager     = sdk.get_managed_singleton("app.MissionManager")
-local fade_manager        = sdk.get_managed_singleton("app.FadeManager")
-local gui_manager         = sdk.get_managed_singleton("app.GUIManager")
-local player_manager      = sdk.get_managed_singleton("app.PlayerManager")
-local minigame_manager    = sdk.get_managed_singleton("app.GameMiniEventManager")
+local environment_manager = core.singletons.environment_manager
+local mission_manager     = core.singletons.mission_manager
+local fade_manager        = core.singletons.fade_manager
+local gui_manager         = core.singletons.gui_manager
+local player_manager      = core.singletons.player_manager
+local minigame_manager    = core.singletons.minigame_manager
 
 function main_updates.time_delta()
 	local current_time = os.clock()
@@ -84,6 +64,19 @@ function main_updates.is_active_player()
 	return true
 end
 
+function main_updates.init_savedata()
+	voucher_updates.get_vouchers()
+	
+	facility_updates.get_ration_state()
+	facility_updates.get_ship_state()
+	facility_updates.get_shares_state()
+	facility_updates.get_nest_state()
+	facility_updates.get_pugee_state()
+	facility_updates.init_retrieval()
+	
+	--print("value check " .. tostring(core.savedata.Shares.ready))
+end
+
 function main_updates.get_midx()
 	local moon_cont_success, moon_controller = pcall(function() return environment_manager:get_field("_MoonController") end)
 	if not moon_cont_success then return end
@@ -103,7 +96,7 @@ local function is_active_situation(situation)
 	local active_situations = mask_manager:get_field("_CurrentActiveSituations"):get_field("_items")
 	for _, element in ipairs(active_situations) do
 		local success, value = pcall(function() return element:get_field("value__") end)
-		if success and value == situations[situation] then
+		if success and value == core.situations[situation] then
 			return true
 		end
 	end
@@ -235,7 +228,7 @@ function main_updates.get_hidden()
 	local stage_id           = environment_manager:get_field("_CurrentStage")
 	local is_in_tent         = character:call("get_IsInAllTent")
 	local map_open           = (cur_map_flow == "Active" or cur_map_flow == "CloseModel")
-	local in_training        = stage_id == stage_idx.training and not (is_in_tent or map_open)
+	local in_training        = stage_id == core.stage_idx.training and not (is_in_tent or map_open)
 	local radar_open         = (cur_map_flow == "RadarActive" or cur_map_flow == "WaitOpenReq" or cur_map_flow == "CloseRadarModel" or (cur_map_flow == "OpenRadar" and not map_proc)) and not (in_training or previous_arm_wrest)
 	local in_base_camp       = character:call("get_IsInBaseCamp") and not (is_in_tent or map_open)
 	local in_life_area       = character:call("get_IsInLifeArea") and not (is_in_tent or map_open or in_base_camp)
@@ -280,7 +273,7 @@ function main_updates.get_hidden()
 	main_updates.hide_moon     = config.auto_hide_m and not ((radar_open and slider_visible) or (map_open and previous_map_intrct) or previous_rest_open)
 	main_updates.moon_pos      = map_open and "map" or previous_rest_open and "rest" or "radar"
 	
-	main_updates.in_grand_hub  = stage_id == stage_idx.g_hub
+	main_updates.in_grand_hub  = stage_id == core.stage_idx.g_hub
 	
 	if not config.auto_hide then main_updates.alt_tracker = false end
 	if not config.auto_hide_m then main_updates.moon_pos = "radar" end
@@ -290,6 +283,10 @@ function main_updates.get_hidden()
 end
 
 function main_updates.register_hooks()
+	sdk.hook(
+		sdk.find_type_definition("app.savedata.cUserSaveParam"):get_method("init"),
+		nil, function(retval) main_updates.init_savedata(); return retval end
+	)
 	sdk.hook(
 		sdk.find_type_definition("app.GUI090302"):get_method("onOpen"),
 		function(args) current_rest_open = true end, nil

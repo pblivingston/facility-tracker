@@ -1,14 +1,15 @@
 local core             = require("hud_extensions/core")
-local main_updates     = require("hud_extensions/main_updates")
 local facility_helpers = require("hud_extensions/facility_helpers")
 local facility_updates = require("hud_extensions/facility_updates")
+local main_updates     = require("hud_extensions/main_updates")
 local draw_helpers     = require("hud_extensions/draw_helpers")
 
 local draw = {}
 
 function draw.facility_tracker()
 	local config = core.config
-	local tidx = facility_updates.tidx
+	local savedata = core.savedata
+	local tidx = core.tidx
 	local img = draw_helpers.img
 	local tr = draw_helpers.tr
 	
@@ -21,40 +22,40 @@ function draw.facility_tracker()
 	}
 	
 	local retrieval_elements = {
-		{ type = "icon",  value = v_icon.sild, width = tr.icon_d, flag = config.box_datas.Rysher.full, frame = true },
-		{ type = "text",  value = facility_helpers.get_box_msg("Rysher") },
-		{ type = "icon",  value = v_icon.kunafa, width = tr.icon_d, flag = config.box_datas.Murtabak.full, frame = true },
-		{ type = "text",  value = facility_helpers.get_box_msg("Murtabak") },
-		{ type = "icon",  value = v_icon.suja, width = tr.icon_d, flag = config.box_datas.Apar.full, frame = true },
-		{ type = "text",  value = facility_helpers.get_box_msg("Apar") },
-		{ type = "icon",  value = v_icon.wudwuds, width = tr.icon_d, flag = config.box_datas.Plumpeach.full, frame = true },
-		{ type = "text",  value = facility_helpers.get_box_msg("Plumpeach") },
-		{ type = "icon",  value = v_icon.azuz, width = tr.icon_d, flag = config.box_datas.Sabar.full, frame = true },
-		{ type = "text",  value = facility_helpers.get_box_msg("Sabar") }
+		{ type = "icon",  value = v_icon.sild, width = tr.icon_d, flag = savedata.retrieval.Rysher.full, frame = true },
+		{ type = "text",  value = facility_helpers.get_box_msg("Rysher", "retrieval") },
+		{ type = "icon",  value = v_icon.kunafa, width = tr.icon_d, flag = savedata.retrieval.Murtabak.full, frame = true },
+		{ type = "text",  value = facility_helpers.get_box_msg("Murtabak", "retrieval") },
+		{ type = "icon",  value = v_icon.suja, width = tr.icon_d, flag = savedata.retrieval.Apar.full, frame = true },
+		{ type = "text",  value = facility_helpers.get_box_msg("Apar", "retrieval") },
+		{ type = "icon",  value = v_icon.wudwuds, width = tr.icon_d, flag = savedata.retrieval.Plumpeach.full, frame = true },
+		{ type = "text",  value = facility_helpers.get_box_msg("Plumpeach", "retrieval") },
+		{ type = "icon",  value = v_icon.azuz, width = tr.icon_d, flag = savedata.retrieval.Sabar.full, frame = true },
+		{ type = "text",  value = facility_helpers.get_box_msg("Sabar", "retrieval") }
 	}
 	
 	local tracker_elements = {
-		{ type = "icon",  value = img.ship, width = tr.icon_d, flag = facility_updates.leaving },
+		{ type = "icon",  value = img.ship, width = tr.icon_d, flag = savedata.ship.leaving },
 		{ type = "text",  value = facility_helpers.get_ship_message() },
-		{ type = "icon",  value = img.ship, width = tr.icon_d, flag = facility_updates.leaving },
+		{ type = "icon",  value = img.ship, width = tr.icon_d, flag = savedata.ship.leaving },
 		{ type = "icon",  value = img.spacer_l, width = tr.icon_d },
-		{ type = "icon",  value = img.rations, width = tr.icon_d, timer = tidx.ration, cap = config.box_datas.Rations.timer, flag = config.box_datas.Rations.full },
+		{ type = "icon",  value = img.rations, width = tr.icon_d, timer = tidx.ration, cap = savedata.Rations.timer, flag = savedata.Rations.full },
 		{ type = "text",  value = facility_helpers.get_box_msg("Rations") },
-		{ type = "icon",  value = img.rations, width = tr.icon_d, flag = config.box_datas.Rations.full },
+		{ type = "icon",  value = img.rations, width = tr.icon_d, flag = savedata.Rations.full },
 		{ type = "icon",  value = img.spacer_l, width = tr.icon_d },
-		{ type = "icon",  value = img.retrieval, width = tr.icon_d, flag = config.box_datas.retrieval.full },
+		{ type = "icon",  value = img.retrieval, width = tr.icon_d, flag = savedata.retrieval.full },
 		{ type = "table", value = retrieval_elements },
-		{ type = "icon",  value = img.retrieval, width = tr.icon_d, flag = config.box_datas.retrieval.full },
+		{ type = "icon",  value = img.retrieval, width = tr.icon_d, flag = savedata.retrieval.full },
 		{ type = "icon",  value = img.spacer_l, width = tr.icon_d },
-		{ type = "icon",  value = img.workshop, width = tr.icon_d, flag = config.box_datas.Shares.full },
+		{ type = "icon",  value = img.workshop, width = tr.icon_d, flag = savedata.Shares.full },
 		{ type = "text",  value = facility_helpers.get_box_msg("Shares") },
-		{ type = "icon",  value = img.workshop, width = tr.icon_d, flag = config.box_datas.Shares.full },
+		{ type = "icon",  value = img.workshop, width = tr.icon_d, flag = savedata.Shares.full },
 		{ type = "icon",  value = img.spacer_l, width = tr.icon_d },
-		{ type = "icon",  value = img.nest, width = tr.icon_d, timer = tidx.nest, cap = config.box_datas.Nest.timer, flag = config.box_datas.Nest.full },
+		{ type = "icon",  value = img.nest, width = tr.icon_d, timer = tidx.nest, cap = savedata.Nest.timer, flag = savedata.Nest.full },
 		{ type = "text",  value = facility_helpers.get_box_msg("Nest") },
-		{ type = "icon",  value = img.nest, width = tr.icon_d, flag = config.box_datas.Nest.full },
+		{ type = "icon",  value = img.nest, width = tr.icon_d, flag = savedata.Nest.full },
 		{ type = "icon",  value = img.spacer_l, width = tr.icon_d },
-		{ type = "icon",  value = img.pugee, width = tr.icon_d, timer = tidx.pugee, cap = config.box_datas.pugee.timer, flag = config.box_datas.pugee.full }
+		{ type = "icon",  value = img.pugee, width = tr.icon_d, timer = tidx.pugee, cap = savedata.pugee.timer, flag = savedata.pugee.full }
 	}
 	
 	tr.totalWidth = draw_helpers.measureElements(tracker_elements, tr)
@@ -72,7 +73,7 @@ end
 
 function draw.mini_tracker()
 	local config = core.config
-	local tidx = facility_updates.tidx
+	local tidx = core.tidx
 	local color = draw_helpers.color
 	local img = draw_helpers.img
 	local tr = draw_helpers.tr
@@ -163,12 +164,18 @@ function draw.system_clock()
 	local ti = draw_helpers.ti
 	
 	local mini_on_clock = main_updates.alt_tracker and config.draw_tracker and config.mini_tracker and not config.mi_tent_map
+	
+	local font = {
+		name   = "Segoe UI",
+		size   = main_updates.alt_tracker and tr.font.size or ti.font.size,
+		bold   = true,
+		italic = false
+	}
 
 	local text          = config.non_meridian_c and os.date("%H:%M") or os.date("%I:%M")
 	local margin        = main_updates.alt_tracker and tr.margin or ti.margin
-	local font_size     = main_updates.alt_tracker and tr.font.size or ti.font.size
-	local font          = d2d.Font.new("Segoe UI", font_size, true, false)
-	local txt_w         = font:measure(text)
+	local ref_font      = d2d.Font.new(font.name, font.size, font.bold, font.italic)
+	local txt_w         = ref_font:measure(text)
 	local txt_y         = main_updates.alt_tracker and tr.txt_y or ti.txt_y
 	local mini_ck_w     = txt_w + mi.totalWidth + mi.gap
 	local bg_w          = mini_on_clock and mini_ck_w * 1.5 or txt_w * 1.5
@@ -184,13 +191,14 @@ function draw.system_clock()
 	mi.ck_opacity = config.ck_opacity * main_updates.fade_value_c
 	mi.ck_x       = draw_helpers.screen_w - txt_w - margin
 	
-	local border_opacity = (main_updates.alt_tracker and config.draw_tracker and not config.mini_tracker) and mi.ck_opacity * 1 or mi.ck_opacity
+	local text_color = draw_helpers.apply_opacity(color.clock_text, mi.ck_opacity)
+	local shad_color = draw_helpers.apply_opacity(color.shadow, mi.ck_opacity)
 	
 	-- Draw the clock
 	draw_helpers.drawRectAlphaGradient("left", 0.5, 0, color.background, bg_x, 0, bg_w, bg_h, mi.ck_opacity)
 	d2d.image(img.border_right, end_border_x, border_y, end_border_w, border_h, mi.ck_opacity * end_border_a)
 	draw_helpers.drawRectAlphaGradient("left", 0.5, border_neg, img.border_section, bg_x, border_y, bg_w, border_h, mi.ck_opacity)
-	d2d.text(font, text, mi.ck_x, txt_y, draw_helpers.apply_opacity(color.clock_text, mi.ck_opacity))
+	draw_helpers.shadow_text(font, text, mi.ck_x, txt_y, text_color, shad_color)
 	if mini_on_clock then
 		draw_helpers.drawElements(mi.elements, mi)
 	end

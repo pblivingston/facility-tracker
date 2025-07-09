@@ -1,6 +1,6 @@
 local core           = require("hud_extensions/core")
-local config_helpers = require("hud_extensions/config_helpers")
 local main_updates   = require("hud_extensions/main_updates")
+local config_helpers = require("hud_extensions/config_helpers")
 
 local config_window = { open = false }
 
@@ -263,6 +263,7 @@ function config_window.draw_config()
 		
 		imgui.end_window()
 	else
+		imgui.end_window()
 		config_window.open = false
 	end
 end

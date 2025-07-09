@@ -1,5 +1,6 @@
 
 lucky voucher tracker
+config version detection
 moon on environment overview
 ancient wyvern coins in hub
 wishlist tracker
@@ -9,19 +10,21 @@ shares flag on items available
 detect start menu for showing tracker
 
 
-- fade_value and dt are no longer nil for the first frame when checked in draw_helpers
-- progress bars no longer disappear at certain scaling levels
-- auto-hide override is no longer triggered when the item slider is visible but the radial menu is not
-- story moon should now show in story missions when available
-- material retrieval now clears when using 'take all'
+
+		facility_tracker
+draw				config_window
+draw_helpers		config_helpers
+		main_updates
+facility_updates	voucher_updates
+facility_helpers
+		core
 
 
 
 
 
-
-
-
+ship status 1 = in port
+ship status 2 = away from port
 
 
 

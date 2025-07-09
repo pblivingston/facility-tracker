@@ -3,12 +3,15 @@ local config_window    = require("hud_extensions/config_window")
 local main_updates     = require("hud_extensions/main_updates")
 local facility_helpers = require("hud_extensions/facility_helpers")
 local facility_updates = require("hud_extensions/facility_updates")
+local voucher_updates  = require("hud_extensions/voucher_updates")
 local draw_helpers     = require("hud_extensions/draw_helpers")
 local draw             = require("hud_extensions/draw")
 
 core.load_config()                -- Load the config file
 main_updates.register_hooks()     -- Register main update hooks
 facility_updates.register_hooks() -- Register facility update hooks
+
+main_updates.init_savedata()
 
 -----------------------------------------------------------
 -- ON-FRAME UPDATE
@@ -26,10 +29,9 @@ re.on_frame(
 		main_updates.time_delta()
 		
 		if not main_updates.is_active_player() then
-			facility_updates.first_run = true
+			core.first_run = true
 			main_updates.previous_hidden = true
 			main_updates.previous_fading = true
-            core.save_config()
 			return
         end
 		
@@ -39,14 +41,14 @@ re.on_frame(
 		main_updates.get_fade()
 		main_updates.get_hidden()
 		
-		facility_updates.get_ration_state()
-		facility_updates.get_ship_state()
-		facility_updates.get_shares_state()
-		facility_updates.get_retrieval_state()
-		facility_updates.get_nest_state()
+		-- facility_updates.get_ration_state()
+		-- facility_updates.get_ship_state()
+		-- facility_updates.get_shares_state()
+		-- facility_updates.get_retrieval_state()
+		-- facility_updates.get_nest_state()
 		facility_updates.get_pugee_state()
 		
-		facility_updates.first_run = false
+		core.first_run = false
     end
 )
 
@@ -79,10 +81,11 @@ d2d.register(
     function()
 		draw_helpers.color = {
 			background  = 0x882E2810,   -- Semi-transparent dark tan
+			shadow      = 0xFF000000,   -- Black
 			text        = 0xFFFFFFFF,   -- White
-			timer_text  = 0xFFFCFFA6,   -- Light Yellow
+			timer_text  = 0xFFFDFFA8,   -- Light Yellow
 			clock_text  = 0xFFF4DB8A,   -- Yellow
-			count_text  = 0xFFFCFFA6,   -- Light Yellow
+			count_text  = 0xFFFCFFA0,   -- Light Yellow
 			full_text   = 0xFFFACC41,   -- Dark Yellow
 			red_text    = 0xFFFF0000,   -- Red
 			prog_bar    = 0xFF00FF00,   -- Green

@@ -78,7 +78,7 @@ core.config = {
 		Murtabak  = { count = 0, size = 16 },
 		Apar      = { count = 0, size = 16 },
 		Plumpeach = { count = 0, size = 16 },
-		Sabar     = { count = 0, size = 16 }
+		Sabar     = { count = 0, size = 16 },
 	}
 }
 
@@ -99,6 +99,14 @@ function core.load_config()
     end
 end
 
+function core.lerp(a, b, t)
+    return a + (b - a) * t
+end
+
+function core.ease_in_out(frac)
+	return (frac^2) / (2 * (frac^2 - frac) + 1)
+end
+
 function core.capture_args(args)
     core.captured_args = args
 end
@@ -110,6 +118,75 @@ function core.get_index(indexed_table, value)
 		end
 	end
 	return nil
+end
+
+core.singletons = {
+	environment_manager = sdk.get_managed_singleton("app.EnvironmentManager"),
+	mission_manager     = sdk.get_managed_singleton("app.MissionManager"),
+	fade_manager        = sdk.get_managed_singleton("app.FadeManager"),
+	gui_manager         = sdk.get_managed_singleton("app.GUIManager"),
+	player_manager      = sdk.get_managed_singleton("app.PlayerManager"),
+	minigame_manager    = sdk.get_managed_singleton("app.GameMiniEventManager"),
+	facility_manager    = sdk.get_managed_singleton("app.FacilityManager"),
+	savedata_manager    = sdk.get_managed_singleton("app.SaveDataManager")
+}
+
+core.situations = {
+	arm_wrestling = 42,
+	table_sitting = 43
+}
+
+core.stage_idx = {
+	plains   = 0,
+	forest   = 1,
+	basin    = 2,
+	cliffs   = 3,
+	ruins    = 4,
+	trail    = 5,
+	tunnel   = 6,
+	l_path   = 7,
+	approach = 8,
+	arena    = 9,
+	peak     = 10,
+	suja     = 12,
+	g_hub    = 14,
+	training = 15
+}
+
+core.tidx = {
+    ration = 0,
+    pugee  = 10,
+    nest   = 11
+}
+
+core.npc_names = {
+    [-2058179200] = "Rysher",
+    [35]          = "Murtabak",
+    [622724160]   = "Apar",
+    [1066308736]  = "Plumpeach",
+    [1558632320]  = "Sabar"
+}
+
+core.savedata = {
+	vouchers  = { size = 5 },
+	Rations   = { size = 10, timer = 600 },
+	ship      = {  },
+	Shares    = { size = 100 },
+	Nest      = { count = 0, size = 5, full = false, timer = 1200 },
+	pugee     = { timer = 2520 },
+	retrieval = {
+		Rysher    = {  },
+		Murtabak  = {  },
+		Apar      = {  },
+		Plumpeach = {  },
+		Sabar     = {  }
+	},
+}
+
+function core.get_savedata()
+	local savedata_manager = core.singletons.savedata_manager
+	local savedata_idx = savedata_manager:get_field("CurrentUserDataIndex")
+	return savedata_manager:get_field("_UserSaveData"):get_field("_Data"):get_element(savedata_idx)
 end
 
 local imgui_keys = {

@@ -4,10 +4,8 @@ local facility_helpers = {}
 
 local previous_timer_value = {}
 
-local facility_manager = sdk.get_managed_singleton("app.FacilityManager")
-
 function facility_helpers.get_timer(timer_index)
-	local timers = facility_manager:get_field("<_FacilityTimers>k__BackingField")
+	local timers = core.singletons.facility_manager:get_field("<_FacilityTimers>k__BackingField")
     if not timers then return nil end
 
     local size = timers:get_field("_size")
@@ -47,17 +45,18 @@ function facility_helpers.get_timer_msg(timer_index)
     return "ERR"
 end
 
-function facility_helpers.get_box_msg(box)
-	local count = core.config.box_datas[box].count
-	local size  = core.config.box_datas[box].size
+function facility_helpers.get_box_msg(box, subtable)
+	local data = subtable and core.savedata[subtable] or core.savedata
+	local count = data[box].count
+	local size  = data[box].size
 	return string.format("%s: %d/%d", box, count, size)
 end
 
 function facility_helpers.get_ship_message()
-    if facility_helpers.is_in_port then
-        if core.config.countdown == 0 then return "Casting off!" end
-		if core.config.countdown == 1 then return "Leaving soon!" end
-		return "In port: " .. core.config.countdown .. " days"
+    if core.savedata.ship.is_in_port then
+        if core.savedata.ship.countdown == 0 then return "Casting off!" end
+		if core.savedata.ship.countdown == 1 then return "Leaving soon!" end
+		return "In port: " .. core.savedata.ship.countdown .. " days"
     end
     return "Away from port"
 end
