@@ -1,6 +1,4 @@
-local core = { captured_args = nil }
-
-local config_path = "facility_tracker.json"
+local core = {}
 
 core.config = {
 	tr_hotkey        = "None",
@@ -66,21 +64,10 @@ core.config = {
     ti_user_scale    = 1.0,
     ti_opacity       = 1.0,
 	vo_opacity       = 1.0,
-	ck_opacity       = 1.0,
-    countdown 	     = 3,
-	box_datas	     = {
-		Rations   = { size = 10, timer = 600 },
-		Shares    = { size = 100 },
-		Nest      = { count = 0, size = 5, timer = 1200 },
-		pugee     = { timer = 2520 },
-		retrieval = { full = false },
-		Rysher    = { count = 0, size = 16 },
-		Murtabak  = { count = 0, size = 16 },
-		Apar      = { count = 0, size = 16 },
-		Plumpeach = { count = 0, size = 16 },
-		Sabar     = { count = 0, size = 16 },
-	}
+	ck_opacity       = 1.0
 }
+
+local config_path = "facility_tracker.json"
 
 function core.save_config()
     json.dump_file(config_path, core.config)
@@ -99,16 +86,20 @@ function core.load_config()
     end
 end
 
+function core.load_data(folder)
+	folder = folder and "hud_extensions\\" .. folder or "hud_extensions"
+	for _, path in ipairs(fs.glob(folder .. [[\\.*json]])) do
+		local name = path:sub(#folder + 2, -6)
+		core[name] = json.load_file(path)
+	end
+end
+
 function core.lerp(a, b, t)
     return a + (b - a) * t
 end
 
 function core.ease_in_out(frac)
 	return (frac^2) / (2 * (frac^2 - frac) + 1)
-end
-
-function core.capture_args(args)
-    core.captured_args = args
 end
 
 function core.get_index(indexed_table, value)
@@ -128,7 +119,8 @@ core.singletons = {
 	player_manager      = sdk.get_managed_singleton("app.PlayerManager"),
 	minigame_manager    = sdk.get_managed_singleton("app.GameMiniEventManager"),
 	facility_manager    = sdk.get_managed_singleton("app.FacilityManager"),
-	savedata_manager    = sdk.get_managed_singleton("app.SaveDataManager")
+	savedata_manager    = sdk.get_managed_singleton("app.SaveDataManager"),
+	network_manager     = sdk.get_managed_singleton("app.NetworkManager")
 }
 
 core.situations = {
@@ -180,7 +172,7 @@ core.savedata = {
 		Apar      = {  },
 		Plumpeach = {  },
 		Sabar     = {  }
-	},
+	}
 }
 
 function core.get_savedata()

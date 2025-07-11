@@ -1,6 +1,7 @@
 local core             = require("hud_extensions/core")
 local facility_helpers = require("hud_extensions/facility_helpers")
 local facility_updates = require("hud_extensions/facility_updates")
+local moon_updates     = require("hud_extensions/moon_updates")
 local main_updates     = require("hud_extensions/main_updates")
 local draw_helpers     = require("hud_extensions/draw_helpers")
 
@@ -13,49 +14,71 @@ function draw.facility_tracker()
 	local img = draw_helpers.img
 	local tr = draw_helpers.tr
 	
-	local v_icon = {
-		sild    = config.old_icons and img.sild or img.sild_b,
-		kunafa  = config.old_icons and img.kunafa or img.kunafa_b,
-		suja    = config.old_icons and img.suja or img.suja_b,
-		wudwuds = config.old_icons and img.wudwuds or img.wudwuds_b,
-		azuz    = config.old_icons and img.azuz or img.azuz_b
-	}
-	
 	local retrieval_elements = {
-		{ type = "icon",  value = v_icon.sild, width = tr.icon_d, flag = savedata.retrieval.Rysher.full, frame = true },
+		{ type = "icon",  value = config.old_icons and img.sild or img.sild_b,
+			flag = config.draw_flags and savedata.retrieval.Rysher.full,
+			frame = img.frame },
 		{ type = "text",  value = facility_helpers.get_box_msg("Rysher", "retrieval") },
-		{ type = "icon",  value = v_icon.kunafa, width = tr.icon_d, flag = savedata.retrieval.Murtabak.full, frame = true },
+		{ type = "icon",  value = config.old_icons and img.kunafa or img.kunafa_b,
+			flag = config.draw_flags and savedata.retrieval.Murtabak.full,
+			frame = img.frame },
 		{ type = "text",  value = facility_helpers.get_box_msg("Murtabak", "retrieval") },
-		{ type = "icon",  value = v_icon.suja, width = tr.icon_d, flag = savedata.retrieval.Apar.full, frame = true },
+		{ type = "icon",  value = config.old_icons and img.suja or img.suja_b,
+			flag = config.draw_flags and savedata.retrieval.Apar.full,
+			frame = img.frame },
 		{ type = "text",  value = facility_helpers.get_box_msg("Apar", "retrieval") },
-		{ type = "icon",  value = v_icon.wudwuds, width = tr.icon_d, flag = savedata.retrieval.Plumpeach.full, frame = true },
+		{ type = "icon",  value = config.old_icons and img.wudwuds or img.wudwuds_b,
+			flag = config.draw_flags and savedata.retrieval.Plumpeach.full,
+			frame = img.frame },
 		{ type = "text",  value = facility_helpers.get_box_msg("Plumpeach", "retrieval") },
-		{ type = "icon",  value = v_icon.azuz, width = tr.icon_d, flag = savedata.retrieval.Sabar.full, frame = true },
-		{ type = "text",  value = facility_helpers.get_box_msg("Sabar", "retrieval") }
+		{ type = "icon",  value = config.old_icons and img.azuz or img.azuz_b,
+			flag = config.draw_flags and savedata.retrieval.Sabar.full,
+			frame = img.frame },
+		{ type = "text",  value = facility_helpers.get_box_msg("Sabar", "retrieval") },
 	}
 	
 	local tracker_elements = {
-		{ type = "icon",  value = img.ship, width = tr.icon_d, flag = savedata.ship.leaving },
+		{ type = "icon",  value = img.ship,
+			flag = config.draw_flags and savedata.ship.leaving },
 		{ type = "text",  value = facility_helpers.get_ship_message() },
-		{ type = "icon",  value = img.ship, width = tr.icon_d, flag = savedata.ship.leaving },
-		{ type = "icon",  value = img.spacer_l, width = tr.icon_d },
-		{ type = "icon",  value = img.rations, width = tr.icon_d, timer = tidx.ration, cap = savedata.Rations.timer, flag = savedata.Rations.full },
+		{ type = "icon",  value = img.ship,
+			flag = config.draw_flags and savedata.ship.leaving },
+		{ type = "icon",  value = img.spacer },
+		{ type = "icon",  value = img.rations,
+			timer = tidx.ration,
+			draw_timer = config.draw_timers,
+			bar = config.draw_bars and savedata.Rations.timer,
+			flag = config.draw_flags and savedata.Rations.full },
 		{ type = "text",  value = facility_helpers.get_box_msg("Rations") },
-		{ type = "icon",  value = img.rations, width = tr.icon_d, flag = savedata.Rations.full },
-		{ type = "icon",  value = img.spacer_l, width = tr.icon_d },
-		{ type = "icon",  value = img.retrieval, width = tr.icon_d, flag = savedata.retrieval.full },
+		{ type = "icon",  value = img.rations,
+			flag = config.draw_flags and savedata.Rations.full },
+		{ type = "icon",  value = img.spacer },
+		{ type = "icon",  value = img.retrieval,
+			flag = config.draw_flags and savedata.retrieval.full },
 		{ type = "table", value = retrieval_elements },
-		{ type = "icon",  value = img.retrieval, width = tr.icon_d, flag = savedata.retrieval.full },
-		{ type = "icon",  value = img.spacer_l, width = tr.icon_d },
-		{ type = "icon",  value = img.workshop, width = tr.icon_d, flag = savedata.Shares.full },
+		{ type = "icon",  value = img.retrieval,
+			flag = config.draw_flags and savedata.retrieval.full },
+		{ type = "icon",  value = img.spacer },
+		{ type = "icon",  value = img.workshop,
+			flag = config.draw_flags and savedata.Shares.full },
 		{ type = "text",  value = facility_helpers.get_box_msg("Shares") },
-		{ type = "icon",  value = img.workshop, width = tr.icon_d, flag = savedata.Shares.full },
-		{ type = "icon",  value = img.spacer_l, width = tr.icon_d },
-		{ type = "icon",  value = img.nest, width = tr.icon_d, timer = tidx.nest, cap = savedata.Nest.timer, flag = savedata.Nest.full },
+		{ type = "icon",  value = img.workshop,
+			flag = config.draw_flags and savedata.Shares.full },
+		{ type = "icon",  value = img.spacer },
+		{ type = "icon",  value = img.nest,
+			timer = tidx.nest,
+			draw_timer = config.draw_timers,
+			bar = config.draw_bars and savedata.Nest.timer,
+			flag = config.draw_flags and savedata.Nest.full },
 		{ type = "text",  value = facility_helpers.get_box_msg("Nest") },
-		{ type = "icon",  value = img.nest, width = tr.icon_d, flag = savedata.Nest.full },
-		{ type = "icon",  value = img.spacer_l, width = tr.icon_d },
-		{ type = "icon",  value = img.pugee, width = tr.icon_d, timer = tidx.pugee, cap = savedata.pugee.timer, flag = savedata.pugee.full }
+		{ type = "icon",  value = img.nest,
+			flag = config.draw_flags and savedata.Nest.full },
+		{ type = "icon",  value = img.spacer },
+		{ type = "icon",  value = img.pugee,
+			timer = tidx.pugee,
+			draw_timer = config.draw_timers,
+			bar = config.draw_bars and savedata.pugee.timer,
+			flag = config.draw_flags and savedata.pugee.full },
 	}
 	
 	tr.totalWidth = draw_helpers.measureElements(tracker_elements, tr)
@@ -101,33 +124,37 @@ function draw.trades_ticker()
 	local ti = draw_helpers.ti
 	
 	local ship_elements = {
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
+		{ type = "icon",  value = img.ph_icon },
 		{ type = "text",  value = "This is a scrolling ticker message." },
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
+		{ type = "icon",  value = img.ph_icon },
 		{ type = "text",  value = "This will eventually display support ship items available once I find them." },
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
+		{ type = "icon",  value = img.ph_icon },
 		{ type = "text",  value = "This is placeholder text for ship items." },
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d }
+		{ type = "icon",  value = img.ph_icon }
 	}
 
 	local trades_elements = {
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
+		{ type = "icon",  value = img.ph_icon },
 		{ type = "text",  value = "The text just keeps on scrolling!" },
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
+		{ type = "icon",  value = img.ph_icon },
 		{ type = "text",  value = "Ideally, this will also list available trades, but those have been rather elusive." },
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
+		{ type = "icon",  value = img.ph_icon },
 		{ type = "text",  value = "Just placeholder text for now." },
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d }
+		{ type = "icon",  value = img.ph_icon }
 	}
 	
 	local ticker_elements = {
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
+		{ type = "icon",  value = img.ph_icon },
 		{ type = "text",  value = "Here's a ticker." },
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d, draw = config.draw_ship },
-		{ type = "table", value = ship_elements, draw = config.draw_ship },
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d, draw = config.draw_trades },
-		{ type = "table", value = trades_elements, draw = config.draw_trades },
-		{ type = "icon",  value = img.ph_icon, width = ti.icon_d },
+		{ type = "icon",  value = img.ph_icon,
+			draw = config.draw_ship },
+		{ type = "table", value = ship_elements,
+			draw = config.draw_ship },
+		{ type = "icon",  value = img.ph_icon,
+			draw = config.draw_trades },
+		{ type = "table", value = trades_elements,
+			draw = config.draw_trades },
+		{ type = "icon",  value = img.ph_icon },
 		{ type = "text",  value = "And we loop around again." }
 	}
 	
@@ -152,7 +179,68 @@ function draw.trades_ticker()
 end
 
 function draw.voucher_tracker()
+	local config = core.config
+	local savedata = core.savedata
+	local color = draw_helpers.color
+	local img = draw_helpers.img
+	local tr = draw_helpers.tr
+	local ti = draw_helpers.ti
+	
+	local vo_icon = {}
+	for i = 0, savedata.vouchers.size - 1 do
+		vo_icon[i] = i < savedata.vouchers.count and img.voucher_v
+	end
+	
+	local elements = {
+		{ type = "icon",  value = vo_icon[0],
+			frame = img.frame_v },
+		{ type = "icon",  value = vo_icon[1],
+			frame = img.frame_v },
+		{ type = "icon",  value = vo_icon[2],
+			frame = img.frame_v },
+		{ type = "icon",  value = vo_icon[3],
+			frame = img.frame_v },
+		{ type = "icon",  value = vo_icon[4],
+			frame = img.frame_v },
+		{ type = "icon",  value = img.spacer,
+			draw = savedata.vouchers.ready },
+		{ type = "text",  value = savedata.vouchers.days,
+			draw = savedata.vouchers.ready },
+		{ type = "icon",  value = img.delivery,
+			--count = savedata.vouchers.days,
+			draw = savedata.vouchers.ready },
+	}
+	
+	local vo = {
+		opacity = config.vo_opacity * main_updates.fade_value_v,
+		gap     = (main_updates.alt_tracker and tr.gap or ti.gap) * 0.5,
+		margin  = main_updates.alt_tracker and tr.margin or ti.margin,
+		txt_y   = main_updates.alt_tracker and tr.txt_y or ti.txt_y,
+		icon_y  = main_updates.alt_tracker and tr.icon_y or ti.icon_y,
+		icon_d  = main_updates.alt_tracker and tr.icon_d or ti.icon_d
+	}
+	
+	vo.start_x = vo.margin
+	vo.font = {
+		name   = "Segoe UI",
+		size   = main_updates.alt_tracker and tr.font.size or ti.font.size,
+		bold   = true,
+		italic = false
+	}
+	
+	local totalWidth    = draw_helpers.measureElements(elements, vo)
+	local bg_w          = totalWidth * 1.5
+	local bg_h          = main_updates.alt_tracker and tr.bg_h or ti.bg_h
+	local border_y      = main_updates.alt_tracker and tr.border_y or ti.border_y
+	local end_border_w  = main_updates.alt_tracker and tr.end_border_w or ti.end_border_w
+	local border_h      = main_updates.alt_tracker and tr.border_h or ti.border_h
+	local border_neg    = end_border_w - vo.margin * 0.8
+	
 	-- Draw vouchers
+	draw_helpers.drawRectAlphaGradient("right", 0.5, 0, color.background, 0, 0, bg_w, bg_h, vo.opacity)
+	d2d.image(img.border_left, 0, border_y, end_border_w, border_h, vo.opacity)
+	draw_helpers.drawRectAlphaGradient("right", 0.5, border_neg, img.border_section, 0, border_y, bg_w, border_h, vo.opacity)
+	draw_helpers.drawElements(elements, vo)
 end
 
 function draw.system_clock()
@@ -186,7 +274,7 @@ function draw.system_clock()
 	local border_y      = main_updates.alt_tracker and tr.border_y or ti.border_y
 	local border_h      = main_updates.alt_tracker and tr.border_h or ti.border_h
 	local border_neg    = mini_on_clock and end_border_w - margin * 0.557 or end_border_w - margin * 0.297
-	local end_border_a  = mini_on_clock and 0.9 or 0.82
+	local end_border_a  = 0.82
 	
 	mi.ck_opacity = config.ck_opacity * main_updates.fade_value_c
 	mi.ck_x       = draw_helpers.screen_w - txt_w - margin
@@ -205,11 +293,11 @@ function draw.system_clock()
 end
 
 function draw.moon_tracker()
-	if main_updates.midx == nil then print("midx is nil!"); return end
+	if moon_updates.midx == nil then print("midx is nil!"); return end
 	local config = core.config
 	local img = draw_helpers.img
-	local moon   = img["moon_" .. tostring(main_updates.midx)]
-	local m_num  = img["m_num_" .. tostring(main_updates.midx)]
+	local moon   = img["moon_" .. tostring(moon_updates.midx)]
+	local m_num  = img["m_num_" .. tostring(moon_updates.midx)]
 	local moon_x = (main_updates.moon_pos == "map" and 16 or main_updates.moon_pos == "rest" and 4 or 4) * draw_helpers.screen_scale
 	local moon_y = (main_updates.moon_pos == "map" and 202 or main_updates.moon_pos == "rest" and 1722 or 1922) * draw_helpers.screen_scale
 	local moon_w = 140 * draw_helpers.screen_scale
@@ -218,7 +306,7 @@ function draw.moon_tracker()
 	
 	-- Draw the moon
 	d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, moon_a)
-	if not (main_updates.in_grand_hub and config.ghub_moon == "Nothing") and main_updates.midx >= 0 then
+	if not (core.in_grand_hub and config.ghub_moon == "Nothing") and moon_updates.midx >= 0 then
 		d2d.image(moon, moon_x, moon_y, moon_w, moon_h, moon_a)
 		if config.draw_m_num then
 			d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, moon_a)

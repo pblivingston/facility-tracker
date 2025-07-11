@@ -255,8 +255,8 @@ function config_window.draw_config()
 		config_helpers.re_ui.indent_w = config_helpers.re_ui.font_size + 3
 		
 		facility_tracker()
-		-- trades_ticker()
-		-- voucher_tracker()
+		trades_ticker()
+		voucher_tracker()
 		system_clock()
 		hiding_options()
 		moon_tracker()

@@ -16,11 +16,6 @@ function facility_updates.get_ration_state()
 	
 	core.savedata.Rations.count = dining:get_field("SupplyNum")
 	core.savedata.Rations.full  = core.savedata.Rations.count == core.savedata.Rations.size
-	
-	-- local dining = facility_manager:get_field("<Dining>k__BackingField")
-	-- if not dining then return end
-    -- core.savedata.Rations.count = dining:getSuppliableFoodNum()
-    -- core.savedata.Rations.full = dining:isSuppliableFoodMax()
 end
 
 function facility_updates.get_ship_state()
@@ -33,42 +28,12 @@ function facility_updates.get_ship_state()
 	core.savedata.ship.is_in_port = status == 1
 	core.savedata.ship.countdown  = status == 1 and count or nil
 	core.savedata.ship.leaving    = status == 1 and count <= 1
-	
-	-- local ship = facility_manager:get_field("<Ship>k__BackingField")
-    -- if not ship then return end
+end
 
-    -- local current_near_departure = ship:call("IsNearDeparture")
-    -- local current_in_port = ship:call("isInPort")
-    -- local current_day_count = ship:get_field("_DayCount")
-	-- local countdown = 3
-
-    -- if current_in_port then
-        -- if core.first_run then
-			-- countdown = core.config.countdown == 0 and countdown or core.config.countdown
-		-- else
-			-- countdown = previous_in_port and core.config.countdown or countdown
-		-- end
-		
-		-- if current_day_count > previous_day_count then
-            -- if countdown <= 1 and current_in_port and previous_in_port then countdown = 0
-            -- elseif current_near_departure and not previous_near_departure then countdown = 1
-            -- elseif countdown == 3 then countdown = 2
-            -- else countdown = 3
-            -- end
-        -- end
-		
-		-- core.config.countdown = countdown
-		-- core.save_config()
-		
-		-- facility_updates.leaving = countdown <= 1
-    -- else
-		-- facility_updates.leaving = false
-		-- core.config.countdown = nil
-	-- end
-	-- previous_in_port = current_in_port
-	-- previous_day_count = current_day_count
-	-- previous_near_departure = current_near_departure
-	-- facility_helpers.is_in_port = current_in_port
+local function clear_shares()
+	core.savedata.Shares.count = 0
+	core.savedata.Shares.full  = false
+	core.savedata.Shares.ready = false
 end
 
 function facility_updates.get_shares_state()
@@ -79,14 +44,6 @@ function facility_updates.get_shares_state()
 	core.savedata.Shares.count = workshop:call("getRewardItems"):get_field("_size") or 0
 	core.savedata.Shares.full  = workshop:call("isFullRewards")
 	core.savedata.Shares.ready = workshop:call("canReceiveRewards")
-	
-	-- local workshop = facility_manager:get_field("<LargeWorkshop>k__BackingField")
-    -- if not workshop then return end
-    -- local reward_items = workshop:call("getRewardItems")
-    -- if not reward_items then return end
-    -- core.savedata.Shares.count = reward_items:get_field("_size") or 0
-    -- core.savedata.Shares.full  = workshop:call("isFullRewardItems")
-    -- core.savedata.Shares.ready = workshop:call("canReceiveRewardItems")
 end
 
 function facility_updates.get_nest_state()
@@ -103,10 +60,6 @@ function facility_updates.get_pugee_state()
 	local pugee = active_savedata:get_field("_Pugee")
 	
 	core.savedata.pugee.full = pugee:get_field("CoolTimer") < 0
-	
-	-- local timer = facility_helpers.get_timer(core.tidx.pugee)
-	-- if not timer then return end
-	-- core.savedata.pugee.full = timer < 0
 end
 
 local function retrieval_full()
@@ -115,8 +68,11 @@ local function retrieval_full()
 	core.savedata.retrieval.full = retrieval:call("isAnyFullCollectionItems")
 end
 
-local function clear_retrieval(args)
-	local npc = sdk.to_managed_object(args[2])
+local function clear_retrieval(npc)
+	if not npc then
+		print("Debug: No NPC provided to clear_retrieval.")
+		return
+	end
 	local npc_fixed_id = npc:get_field("NPCFixedId")
 	local npc_name = core.npc_names[npc_fixed_id]
 	if not npc_name then
@@ -126,14 +82,11 @@ local function clear_retrieval(args)
 	
 	core.savedata.retrieval[npc_name].count = 0
 	core.savedata.retrieval[npc_name].full  = false
-	
-	retrieval_full()
 end
 
 local function update_retrieval(npc)
-	npc = npc or (core.captured_args and sdk.to_managed_object(core.captured_args[2]))
 	if not npc then
-		print("Debug: No NPC or captured_args provided to update_retrieval.")
+		print("Debug: No NPC provided to update_retrieval.")
 		return
 	end
 	
@@ -165,8 +118,6 @@ local function update_retrieval(npc)
 	core.savedata.retrieval[npc_name].size  = size
 	core.savedata.retrieval[npc_name].full  = full
 	core.savedata.retrieval[npc_name].count = valid_count
-	
-	if not npc then core.captured_args = nil end
 end
 
 function facility_updates.init_retrieval()
@@ -211,32 +162,39 @@ function facility_updates.register_hooks()
 		nil, function(retval) facility_updates.get_ship_state(); return retval end
 	)
 	sdk.hook(
+		sdk.find_type_definition("app.savedata.cShipParam"):get_method("setStatus"),
+		nil, function(retval) facility_updates.get_ship_state(); return retval end
+	)
+	sdk.hook(
 		sdk.find_type_definition("app.savedata.cLargeWorkshopParam"):get_method("addRewardItem"),
-		nil, function(retval) facility_updates.get_shares_state() return retval end
+		nil, function(retval) facility_updates.get_shares_state(); return retval end
 	)
 	sdk.hook(
 		sdk.find_type_definition("app.savedata.cLargeWorkshopParam"):get_method("clearRewardItem"),
-		nil, function(retval) facility_updates.get_shares_state() return retval end
+		function(args) clear_shares() end, nil
 	)
 	sdk.hook(
 		sdk.find_type_definition("app.FacilityRallus"):get_method("supplyTimerGoal"),
-		nil, function(retval) facility_updates.get_nest_state() return retval end
+		nil, function(retval) facility_updates.get_nest_state(); return retval end
 	)
 	sdk.hook(
 		sdk.find_type_definition("app.FacilityRallus"):get_method("getSupplyItem"),
-		nil, function(retval) facility_updates.get_nest_state() return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("addCollectionItem"),
-		core.capture_args(args), function(retval) update_retrieval(); retrieval_full(); return retval end
+		nil, function(retval) facility_updates.get_nest_state(); return retval end
 	)
 	sdk.hook(
 		sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("clearCollectionItem"),
-		clear_retrieval(args), nil
+		function(args) clear_retrieval(sdk.to_managed_object(args[2])) end,
+		function(retval) retrieval_full(); return retval end
 	)
 	sdk.hook(
 		sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("clearAllCollectionItem"),
-		clear_retrieval(args), nil
+		function(args) clear_retrieval(sdk.to_managed_object(args[2])) end,
+		function(retval) retrieval_full(); return retval end
+	)
+	sdk.hook(
+		sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("addCollectionItem"),
+		function(args) thread.get_hook_storage()["npc"] = sdk.to_managed_object(args[2]) end, 
+		function(retval) update_retrieval(thread.get_hook_storage()["npc"]); retrieval_full(); return retval end
 	)
 end
 

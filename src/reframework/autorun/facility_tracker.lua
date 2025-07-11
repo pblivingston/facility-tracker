@@ -1,17 +1,18 @@
 local core             = require("hud_extensions/core")
-local config_window    = require("hud_extensions/config_window")
-local main_updates     = require("hud_extensions/main_updates")
-local facility_helpers = require("hud_extensions/facility_helpers")
 local facility_updates = require("hud_extensions/facility_updates")
 local voucher_updates  = require("hud_extensions/voucher_updates")
+local moon_updates     = require("hud_extensions/moon_updates")
+local main_updates     = require("hud_extensions/main_updates")
+local config_window    = require("hud_extensions/config_window")
 local draw_helpers     = require("hud_extensions/draw_helpers")
 local draw             = require("hud_extensions/draw")
 
-core.load_config()                -- Load the config file
-main_updates.register_hooks()     -- Register main update hooks
-facility_updates.register_hooks() -- Register facility update hooks
-
+core.load_config()
 main_updates.init_savedata()
+main_updates.register_hooks()
+moon_updates.register_hooks()
+facility_updates.register_hooks()
+voucher_updates.register_hooks()
 
 -----------------------------------------------------------
 -- ON-FRAME UPDATE
@@ -36,16 +37,11 @@ re.on_frame(
         end
 		
 		-- print("starting active-player updates!")
-
-		main_updates.get_midx()
+		
 		main_updates.get_fade()
 		main_updates.get_hidden()
 		
-		-- facility_updates.get_ration_state()
-		-- facility_updates.get_ship_state()
-		-- facility_updates.get_shares_state()
-		-- facility_updates.get_retrieval_state()
-		-- facility_updates.get_nest_state()
+		moon_updates.get_midx()
 		facility_updates.get_pugee_state()
 		
 		core.first_run = false
@@ -93,54 +89,59 @@ d2d.register(
 			border      = 0xFFAD9D75    -- Tan
 		}
 		
-		-- draw_helpers.load_images("facility_tracker")
-		-- draw_helpers.load_images("moon_tracker")
+		-- draw_helpers.load_images("common")
+		-- draw_helpers.load_images("facility")
+		-- draw_helpers.load_images("ticker")
+		-- draw_helpers.load_images("voucher")
+		-- draw_helpers.load_images("moon")
 
 		draw_helpers.img = {
-			border_left    = d2d.Image.new("facility_tracker/border_left.png"),
-			border_right   = d2d.Image.new("facility_tracker/border_right.png"),
-			border_section = d2d.Image.new("facility_tracker/border_section.png"),
-			ph_icon        = d2d.Image.new("facility_tracker/ph_icon.png"),
-			error		  = d2d.Image.new("facility_tracker/error.png"),
-			spacer 	      = d2d.Image.new("facility_tracker/spacer.png"),
-			spacer_l 	  = d2d.Image.new("facility_tracker/spacer_l.png"),
-			frame_s        = d2d.Image.new("facility_tracker/frame_s.png"),
-			frame_l        = d2d.Image.new("facility_tracker/frame_l.png"),
-			flag 		  = d2d.Image.new("facility_tracker/flag.png"),
-			wilds 	      = d2d.Image.new("facility_tracker/wilds.png"),
-			rations	      = d2d.Image.new("facility_tracker/rations.png"),
-			ship   	      = d2d.Image.new("facility_tracker/ship.png"),
-			pugee          = d2d.Image.new("facility_tracker/pugee.png"),
-			nest		      = d2d.Image.new("facility_tracker/nest.png"),
-			nata 	      = d2d.Image.new("facility_tracker/nata.png"),
-			workshop       = d2d.Image.new("facility_tracker/workshop.png"),
-			retrieval      = d2d.Image.new("facility_tracker/retrieval.png"),
-			trader		  = d2d.Image.new("facility_tracker/trader.png"),
-			kunafa_b       = d2d.Image.new("facility_tracker/kunafa_b.png"),
-			kunafa         = d2d.Image.new("facility_tracker/kunafa.png"),
-			wudwuds_b 	  = d2d.Image.new("facility_tracker/wudwuds_b.png"),
-			wudwuds        = d2d.Image.new("facility_tracker/wudwuds.png"),
-			azuz_b 	 	  = d2d.Image.new("facility_tracker/azuz_b.png"),
-			azuz           = d2d.Image.new("facility_tracker/azuz.png"),
-			suja_b 	 	  = d2d.Image.new("facility_tracker/suja_b.png"),
-			suja           = d2d.Image.new("facility_tracker/suja.png"),
-			sild_b 	 	  = d2d.Image.new("facility_tracker/sild_b.png"),
-			sild           = d2d.Image.new("facility_tracker/sild.png"),
-			m_ring         = d2d.Image.new("moon_tracker/m_ring.png"),
-			moon_0         = d2d.Image.new("moon_tracker/moon_0.png"),
-			moon_1         = d2d.Image.new("moon_tracker/moon_1.png"),
-			moon_2         = d2d.Image.new("moon_tracker/moon_2.png"),
-			moon_3         = d2d.Image.new("moon_tracker/moon_3.png"),
-			moon_4         = d2d.Image.new("moon_tracker/moon_4.png"),
-			moon_5         = d2d.Image.new("moon_tracker/moon_5.png"),
-			moon_6         = d2d.Image.new("moon_tracker/moon_6.png"),
-			m_num_0        = d2d.Image.new("moon_tracker/m_num_0.png"),
-			m_num_1        = d2d.Image.new("moon_tracker/m_num_1.png"),
-			m_num_2        = d2d.Image.new("moon_tracker/m_num_2.png"),
-			m_num_3        = d2d.Image.new("moon_tracker/m_num_3.png"),
-			m_num_4        = d2d.Image.new("moon_tracker/m_num_4.png"),
-			m_num_5        = d2d.Image.new("moon_tracker/m_num_5.png"),
-			m_num_6        = d2d.Image.new("moon_tracker/m_num_6.png")
+			border_left    = d2d.Image.new("hud_extensions/common/border_left.png"),
+			border_right   = d2d.Image.new("hud_extensions/common/border_right.png"),
+			border_section = d2d.Image.new("hud_extensions/common/border_section.png"),
+			error          = d2d.Image.new("hud_extensions/common/error.png"),
+			flag           = d2d.Image.new("hud_extensions/common/flag.png"),
+			frame          = d2d.Image.new("hud_extensions/common/frame.png"),
+			frame_v        = d2d.Image.new("hud_extensions/common/frame_v.png"),
+			nata           = d2d.Image.new("hud_extensions/common/nata.png"),
+			ph_icon        = d2d.Image.new("hud_extensions/common/ph_icon.png"),
+			spacer         = d2d.Image.new("hud_extensions/common/spacer.png"),
+			wilds          = d2d.Image.new("hud_extensions/common/wilds.png"),
+			azuz           = d2d.Image.new("hud_extensions/facility/azuz.png"),
+			azuz_b         = d2d.Image.new("hud_extensions/facility/azuz_b.png"),
+			kunafa         = d2d.Image.new("hud_extensions/facility/kunafa.png"),
+			kunafa_b       = d2d.Image.new("hud_extensions/facility/kunafa_b.png"),
+			nest           = d2d.Image.new("hud_extensions/facility/nest.png"),
+			pugee          = d2d.Image.new("hud_extensions/facility/pugee.png"),
+			rations        = d2d.Image.new("hud_extensions/facility/rations.png"),
+			retrieval      = d2d.Image.new("hud_extensions/facility/retrieval.png"),
+			ship           = d2d.Image.new("hud_extensions/facility/ship.png"),
+			sild           = d2d.Image.new("hud_extensions/facility/sild.png"),
+			sild_b         = d2d.Image.new("hud_extensions/facility/sild_b.png"),
+			suja           = d2d.Image.new("hud_extensions/facility/suja.png"),
+			suja_b         = d2d.Image.new("hud_extensions/facility/suja_b.png"),
+			workshop       = d2d.Image.new("hud_extensions/facility/workshop.png"),
+			wudwuds        = d2d.Image.new("hud_extensions/facility/wudwuds.png"),
+			wudwuds_b      = d2d.Image.new("hud_extensions/facility/wudwuds_b.png"),
+			m_num_0        = d2d.Image.new("hud_extensions/moon/m_num_0.png"),
+			m_num_1        = d2d.Image.new("hud_extensions/moon/m_num_1.png"),
+			m_num_2        = d2d.Image.new("hud_extensions/moon/m_num_2.png"),
+			m_num_3        = d2d.Image.new("hud_extensions/moon/m_num_3.png"),
+			m_num_4        = d2d.Image.new("hud_extensions/moon/m_num_4.png"),
+			m_num_5        = d2d.Image.new("hud_extensions/moon/m_num_5.png"),
+			m_num_6        = d2d.Image.new("hud_extensions/moon/m_num_6.png"),
+			m_ring         = d2d.Image.new("hud_extensions/moon/m_ring.png"),
+			moon_0         = d2d.Image.new("hud_extensions/moon/moon_0.png"),
+			moon_1         = d2d.Image.new("hud_extensions/moon/moon_1.png"),
+			moon_2         = d2d.Image.new("hud_extensions/moon/moon_2.png"),
+			moon_3         = d2d.Image.new("hud_extensions/moon/moon_3.png"),
+			moon_4         = d2d.Image.new("hud_extensions/moon/moon_4.png"),
+			moon_5         = d2d.Image.new("hud_extensions/moon/moon_5.png"),
+			moon_6         = d2d.Image.new("hud_extensions/moon/moon_6.png"),
+			trader         = d2d.Image.new("hud_extensions/ticker/trader.png"),
+			delivery       = d2d.Image.new("hud_extensions/voucher/delivery.png"),
+			voucher        = d2d.Image.new("hud_extensions/voucher/voucher.png"),
+			voucher_v      = d2d.Image.new("hud_extensions/voucher/voucher_v.png"),
 		}
     end,
     function()
@@ -173,7 +174,7 @@ d2d.register(
 		if core.config.draw_clock and not main_updates.hide_clock then
 			draw.system_clock()
 		end
-		if core.config.draw_moon and not (main_updates.hide_moon or main_updates.midx == nil) then
+		if core.config.draw_moon and not (main_updates.hide_moon or moon_updates.midx == nil) then
 			draw.moon_tracker()
 		end
     end

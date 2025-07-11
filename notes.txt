@@ -10,14 +10,26 @@ shares flag on items available
 detect start menu for showing tracker
 
 
+- added text outline/shadow and removed count backgrounds for improved aesthetics and readability
+- changed most updates to savedata hooks, drastically reducing on-frame calls
+- ship status/countdown and retrieval counts will no longer be incorrect on first run
+- moved moon updates to their own module
 
-		facility_tracker
-draw				config_window
-draw_helpers		config_helpers
-		main_updates
-facility_updates	voucher_updates
-facility_helpers
-		core
+
+
+
+		-	-	-  facility_tracker -	-	-
+draw			config_window
+draw_helpers	config_helpers
+		-	-	-	main_updates	-	-	-
+moon_updates	voucher_updates		facility_updates	
+									facility_helpers
+		-	-	-		core		-	-	-
+
+
+frame
+voucher icon
+login icon
 
 
 

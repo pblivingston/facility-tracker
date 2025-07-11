@@ -1,6 +1,5 @@
 local core             = require("hud_extensions/core")
 local facility_helpers = require("hud_extensions/facility_helpers")
-local facility_updates = require("hud_extensions/facility_updates")
 local main_updates     = require("hud_extensions/main_updates")
 
 local draw_helpers = {}
@@ -15,6 +14,7 @@ local timer_scale = 0.42
 local count_scale = 0.68
 
 -- function draw_helpers.load_images(folder)
+	-- folder = folder and "hud_extensions\\" .. folder or "hud_extensions"
 	-- draw_helpers.img = draw_helpers.img or {}
 	-- for _, path in ipairs(fs.glob(folder .. [[\\.*png]], "$images")) do
 		-- local name = path:sub(#folder + 2, -5)
@@ -92,7 +92,7 @@ function draw_helpers.drawRectAlphaGradient(direction, offset, negative, element
     end
 end
 
-function draw_helpers.measureElements(elements, data, scaling)
+function draw_helpers.measureElements(elements, data)
     local totalWidth = 0
     for i, elem in ipairs(elements) do
 		if elem.draw == false then goto continue end
@@ -100,7 +100,7 @@ function draw_helpers.measureElements(elements, data, scaling)
 			local text_font = d2d.Font.new(data.font.name, data.font.size, data.font.bold, data.font.italic)
             elem.measured_width = text_font:measure(elem.value)
         elseif elem.type == "icon" then
-			elem.measured_width = scaling and elem.width * table_scale or elem.width
+			elem.measured_width = data.icon_d
 		elseif elem.type == "table" then
 			local tbl_data = {}
             tbl_data.font = {
@@ -109,8 +109,9 @@ function draw_helpers.measureElements(elements, data, scaling)
 				bold   = data.font.bold,
 				italic = data.font.italic
 			}
-            tbl_data.gap = data.gap * table_scale
-            elem.measured_width = draw_helpers.measureElements(elem.value, tbl_data, true)
+            tbl_data.gap    = data.gap * table_scale
+			tbl_data.icon_d = data.icon_d * table_scale
+            elem.measured_width = draw_helpers.measureElements(elem.value, tbl_data)
         end
         totalWidth = totalWidth + elem.measured_width + data.gap
 		::continue::
@@ -118,7 +119,7 @@ function draw_helpers.measureElements(elements, data, scaling)
     return totalWidth - data.gap
 end
 
-function draw_helpers.drawElements(elements, data, scaling)
+function draw_helpers.drawElements(elements, data)
 	local config = core.config
 	local xPos = data.start_x
     for i, elem in ipairs(elements) do
@@ -126,9 +127,7 @@ function draw_helpers.drawElements(elements, data, scaling)
 		local ref_font = d2d.Font.new(data.font.name, data.font.size, data.font.bold, data.font.italic)
 		local _, ref_char_h = ref_font:measure("A")
 		local shad_color = draw_helpers.apply_opacity(draw_helpers.color.shadow, data.opacity)
-		--local shad_dist = data.font.size * 0.068
         if elem.type == "text" then
-			--local text_font = d2d.Font.new(data.font.name, data.font.size, data.font.bold, data.font.italic)
 			local text_font = {
 				name   = data.font.name,
 				size   = data.font.size,
@@ -136,22 +135,21 @@ function draw_helpers.drawElements(elements, data, scaling)
 				italic = data.font.italic
 			}
 			local text_color = draw_helpers.apply_opacity(draw_helpers.color.text, data.opacity)
-            --d2d.text(text_font, elem.value, xPos, data.txt_y, draw_helpers.apply_opacity(draw_helpers.color.text, data.opacity))
 			draw_helpers.shadow_text(text_font, elem.value, xPos, data.txt_y, text_color, shad_color)
             xPos = xPos + elem.measured_width + data.gap
         elseif elem.type == "icon" then
-            local drawW = scaling and elem.width * table_scale or elem.width
 			if elem.frame then
-				d2d.image(draw_helpers.img.frame_l, xPos, data.icon_y, drawW, data.icon_d, data.opacity)
+				d2d.image(elem.frame, xPos, data.icon_y, data.icon_d, data.icon_d, data.opacity)
 			end
-            d2d.image(elem.value, xPos, data.icon_y, drawW, data.icon_d, data.opacity)
-			if elem.flag and config.draw_flags then
-				local flagX = xPos - drawW / 2 + data.margin * 1.5
+            if elem.value then
+				d2d.image(elem.value, xPos, data.icon_y, data.icon_d, data.icon_d, data.opacity)
+			end
+			if elem.flag then
+				local flagX = xPos - data.icon_d / 2 + data.margin * 1.5
 				local flagY = main_updates.alt_tracker and data.icon_y - data.margin * 2.1 or data.icon_y - data.icon_d / 2 + data.margin * 1.2
-				d2d.image(draw_helpers.img.flag, flagX, flagY, drawW, data.icon_d, data.opacity)
+				d2d.image(draw_helpers.img.flag, flagX, flagY, data.icon_d, data.icon_d, data.opacity)
 			end
-			if elem.count ~= nil and config.mini_counts then
-				--local count_font = d2d.Font.new(data.font.name, data.font.size * count_scale, true, false)
+			if elem.count then
 				local count_font = {
 					name   = data.font.name,
 					size   = data.font.size * count_scale,
@@ -168,8 +166,7 @@ function draw_helpers.drawElements(elements, data, scaling)
 				local text_color = draw_helpers.apply_opacity(count_color, data.opacity)
 				draw_helpers.shadow_text(count_font, count, count_x, count_y, text_color, shad_color)
 			end
-			if elem.timer ~= nil and config.draw_timers then
-				--local timer_font = d2d.Font.new(data.font.name, data.font.size * timer_scale, false, false)
+			if elem.timer and elem.draw_timer then
 				local timer_font = {
 					name   = data.font.name,
 					size   = data.font.size * timer_scale,
@@ -188,9 +185,9 @@ function draw_helpers.drawElements(elements, data, scaling)
 				d2d.fill_rect(timer_x, timer_bg_y, timer_bg_w, timer_bg_h, draw_helpers.apply_opacity(draw_helpers.color.background, data.opacity))
 				draw_helpers.shadow_text(timer_font, timer_msg, timer_x, timer_y, text_color, shad_color)
 			end
-			if elem.timer ~= nil and elem.cap ~= nil and config.draw_bars then
+			if elem.timer and elem.bar then
 				local timer_value = facility_helpers.get_timer(elem.timer)
-				local progress = 1 - math.max(0, math.min(1, timer_value / elem.cap))
+				local progress = 1 - math.max(0, math.min(1, timer_value / elem.bar))
 				local bar_w = data.icon_d * 0.75
 				local bar_h = data.icon_d * 0.05
 				local bar_x = xPos + data.margin * 1.6
@@ -219,7 +216,7 @@ function draw_helpers.drawElements(elements, data, scaling)
 			tbl_data.icon_d  = data.icon_d * table_scale
             tbl_data.icon_y  = data.icon_y + (data.icon_d - tbl_data.icon_d) * 5/8
 			tbl_data.margin  = data.margin * table_scale
-            xPos = draw_helpers.drawElements(elem.value, tbl_data, true)
+            xPos = draw_helpers.drawElements(elem.value, tbl_data)
         end
 		::continue::
     end
@@ -287,20 +284,39 @@ function draw_helpers.mini_tracker()
 	}
 	local retrieval_count = math.max(table.unpack(npc_counts))
 	
-	local draw_ship = config.mini_ship == "Always" or (config.mini_ship == "In Port" and savedata.ship.is_in_port) or (config.mini_ship == "Near Departure" and savedata.ship.leaving)
-	local draw_ration = config.mini_ration == "Always" or (config.mini_ration == "Available" and savedata.Rations.count > 0) or (config.mini_ration == "Full" and savedata.Rations.full)
-	local draw_retrieval = config.mini_retrieval == "Always" or (config.mini_retrieval == "Available" and retrieval_count > 0) or (config.mini_retrieval == "Full" and savedata.retrieval.full)
-	local draw_shares = config.mini_shares == "Always" or (config.mini_shares == "Available" and savedata.Shares.count > 0) or (config.mini_shares == "Full" and savedata.Shares.full)
-	local draw_nest = config.mini_nest == "Always" or (config.mini_nest == "Available" and savedata.Nest.count > 0) or (config.mini_nest == "Full" and savedata.Nest.full)
-	local draw_pugee = config.mini_pugee == "Always" or (config.mini_pugee == "Available" and savedata.pugee.full)
-	
 	mi.elements = {
-		{ type = "icon",  value = img.ship, width = mi.icon_d, count = savedata.ship.countdown, flag = savedata.ship.leaving, draw = draw_ship },
-		{ type = "icon",  value = img.rations, width = mi.icon_d, count = savedata.Rations.count, timer = tidx.ration, cap = savedata.Rations.timer, flag = savedata.Rations.full, draw = draw_ration },
-		{ type = "icon",  value = img.retrieval, width = mi.icon_d, count = retrieval_count, flag = savedata.retrieval.full, draw = draw_retrieval },
-		{ type = "icon",  value = img.workshop, width = mi.icon_d, count = savedata.Shares.count, flag = savedata.Shares.full, draw = draw_shares },
-		{ type = "icon",  value = img.nest, width = mi.icon_d, timer = tidx.nest, cap = savedata.Nest.timer, count = savedata.Nest.count, flag = savedata.Nest.full, draw = draw_nest },
-		{ type = "icon",  value = img.pugee, width = mi.icon_d, timer = tidx.pugee, cap = savedata.pugee.timer, flag = savedata.pugee.full, draw = draw_pugee }
+		{ type = "icon", value = img.ship,
+			count = config.mini_counts and savedata.ship.countdown,
+			flag = config.draw_flags and savedata.ship.leaving,
+			draw = config.mini_ship == "Always" or (config.mini_ship == "In Port" and savedata.ship.is_in_port) or (config.mini_ship == "Near Departure" and savedata.ship.leaving) },
+		{ type = "icon",  value = img.rations,
+			count = config.mini_counts and savedata.Rations.count,
+			flag = config.draw_flags and savedata.Rations.full,
+			timer = tidx.ration,
+			draw_timer = config.draw_timers,
+			bar = config.draw_bars and savedata.Rations.timer,
+			draw = config.mini_ration == "Always" or (config.mini_ration == "Available" and savedata.Rations.count > 0) or (config.mini_ration == "Full" and savedata.Rations.full) },
+		{ type = "icon",  value = img.retrieval,
+			count = config.mini_counts and retrieval_count,
+			flag = config.draw_flags and savedata.retrieval.full,
+			draw = config.mini_retrieval == "Always" or (config.mini_retrieval == "Available" and retrieval_count > 0) or (config.mini_retrieval == "Full" and savedata.retrieval.full) },
+		{ type = "icon",  value = img.workshop,
+			count = config.mini_counts and savedata.Shares.count,
+			flag = config.draw_flags and savedata.Shares.full,
+			draw = config.mini_shares == "Always" or (config.mini_shares == "Available" and savedata.Shares.count > 0) or (config.mini_shares == "Full" and savedata.Shares.full) },
+		{ type = "icon",  value = img.nest,
+			count = config.mini_counts and savedata.Nest.count,
+			flag = config.draw_flags and savedata.Nest.full,
+			timer = tidx.nest,
+			draw_timer = config.draw_timers,
+			bar = config.draw_bars and savedata.Nest.timer,
+			draw = config.mini_nest == "Always" or (config.mini_nest == "Available" and savedata.Nest.count > 0) or (config.mini_nest == "Full" and savedata.Nest.full) },
+		{ type = "icon",  value = img.pugee,
+			flag = config.draw_flags and savedata.pugee.full,
+			timer = tidx.pugee,
+			draw_timer = config.draw_timers,
+			bar = config.draw_bars and savedata.pugee.timer,
+			draw = config.mini_pugee == "Always" or (config.mini_pugee == "Available" and savedata.pugee.full) },
 	}
 	
 	mi.totalWidth = draw_helpers.measureElements(mi.elements, mi)
@@ -339,7 +355,7 @@ function draw_helpers.trades_ticker()
 	
 	ti.ref_font = d2d.Font.new(ti.font.name, ti.font.size, ti.font.bold, ti.font.italic)
 	ti.char_w, ti.char_h = ti.ref_font:measure("A")
-	ti.txt_y = ti.bg_y + ti.bg_h - ti.char_h - ti.margin
+	ti.txt_y = ti.bg_y + ti.bg_h - ti.char_h - ti.margin * 0.497
 	
 	ti.scroll_offset = ti.scroll_offset + ti.speed * main_updates.dt
 	
