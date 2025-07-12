@@ -23,15 +23,19 @@ function voucher_updates.get_login_bonus()
 	-- print("days " .. tostring(core.savedata.vouchers.days))
 end
 
-function voucher_updates.register_hooks()
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cBasicParam"):get_method("addTicket"),
-		nil, function(retval) voucher_updates.get_vouchers(); return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.Net_DeliveryService"):get_method("saveLoginBonusDataEnd"),
-		nil, function(retval) voucher_updates.get_login_bonus(); return retval end
-	)
-end
+---------------------------------------------------
+---------------------------------------------------
+
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cBasicParam"):get_method("addTicket"),
+	nil, function(retval) voucher_updates.get_vouchers(); return retval end
+)
+sdk.hook(
+	sdk.find_type_definition("app.Net_DeliveryService"):get_method("saveLoginBonusDataEnd"),
+	nil, function(retval) voucher_updates.get_login_bonus(); return retval end
+)
+
+---------------------------------------------------
+---------------------------------------------------
 
 return voucher_updates

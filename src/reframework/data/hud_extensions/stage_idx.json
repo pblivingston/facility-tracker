@@ -1,0 +1,16 @@
+{
+	"plains":   0,
+	"forest":   1,
+	"basin":    2,
+	"cliffs":   3,
+	"ruins":    4,
+	"trail":    5,
+	"tunnel":   6,
+	"l_path":   7,
+	"approach": 8,
+	"arena":    9,
+	"peak":     10,
+	"suja":     12,
+	"g_hub":    14,
+	"training": 15
+}

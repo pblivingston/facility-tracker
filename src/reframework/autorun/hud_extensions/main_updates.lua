@@ -267,67 +267,73 @@ function main_updates.get_hidden()
 	slider_visible = false
 end
 
-function main_updates.register_hooks()
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cUserSaveParam"):get_method("init"),
-		nil, function(retval) main_updates.init_savedata(); return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.GUI090302"):get_method("onOpen"),
-		function(args) current_rest_open = true end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.GUI090302"):get_method("onClose"),
-		function(args) current_rest_open = false end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.GUI060000"):get_method("setInteractButtonAssignPos"),
-		function(args) current_map_intrct = true end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.GUI020008"):get_method("onHudOpen"),
-		function(args) radial_visible = true end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.GUI020008"):get_method("onHudClose"),
-		function(args) radial_visible = false end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.GUI020006PartsAllSliderItem"):get_method("update"),
-		function(args) slider_visible = true end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.PlayerCommonAction.cLobbyChairBase"):get_method("doEnter"),
-		function(args) current_table_sit = true end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.PlayerCommonAction.cLobbyChairBase"):get_method("doExit"),
-		function(args) current_table_sit = false end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.PlayerCommonAction.cLobbyTentChairBase"):get_method("doEnter"),
-		function(args) current_camp_sit = true end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.PlayerCommonAction.cLobbyTentChairBase"):get_method("doExit"),
-		function(args) current_camp_sit = false end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.PlayerCommonAction.cCampfireBase"):get_method("doEnter"),
-		function(args) current_camp_sit = true end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.PlayerCommonAction.cCampfireBase"):get_method("doExit"),
-		function(args) current_camp_sit = false end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.PlayerCommonAction.cReclinerChairBase"):get_method("doEnter"),
-		function(args) current_camp_sit = true end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.PlayerCommonAction.cReclinerChairBase"):get_method("doExit"),
-		function(args) current_camp_sit = false end, nil
-	)
-end
+---------------------------------------------------
+---------------------------------------------------
+
+main_updates.init_savedata()
+
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cUserSaveParam"):get_method("init"),
+	nil, function(retval) main_updates.init_savedata(); return retval end
+)
+sdk.hook(
+	sdk.find_type_definition("app.GUI090302"):get_method("onOpen"),
+	function(args) current_rest_open = true end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.GUI090302"):get_method("onClose"),
+	function(args) current_rest_open = false end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.GUI060000"):get_method("setInteractButtonAssignPos"),
+	function(args) current_map_intrct = true end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.GUI020008"):get_method("onHudOpen"),
+	function(args) radial_visible = true end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.GUI020008"):get_method("onHudClose"),
+	function(args) radial_visible = false end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.GUI020006PartsAllSliderItem"):get_method("update"),
+	function(args) slider_visible = true end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cLobbyChairBase"):get_method("doEnter"),
+	function(args) current_table_sit = true end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cLobbyChairBase"):get_method("doExit"),
+	function(args) current_table_sit = false end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cLobbyTentChairBase"):get_method("doEnter"),
+	function(args) current_camp_sit = true end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cLobbyTentChairBase"):get_method("doExit"),
+	function(args) current_camp_sit = false end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cCampfireBase"):get_method("doEnter"),
+	function(args) current_camp_sit = true end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cCampfireBase"):get_method("doExit"),
+	function(args) current_camp_sit = false end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cReclinerChairBase"):get_method("doEnter"),
+	function(args) current_camp_sit = true end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.PlayerCommonAction.cReclinerChairBase"):get_method("doExit"),
+	function(args) current_camp_sit = false end, nil
+)
+
+---------------------------------------------------
+---------------------------------------------------
 
 return main_updates

@@ -18,8 +18,4 @@ function moon_updates.get_midx()
 	moon_updates.midx = (core.active_quest and strm_idx >= 0) and strm_idx or core.active_quest and qstm_idx or (core.in_grand_hub and core.config.ghub_moon == "Hub moon") and hubm_idx or moon_idx
 end
 
-function moon_updates.register_hooks()
-
-end
-
 return moon_updates
