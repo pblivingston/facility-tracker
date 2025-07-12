@@ -225,18 +225,21 @@ end
 
 function draw_helpers.facility_tracker()
 	local config = core.config
-	local tr = draw_helpers.tr or {}
+	local tr = draw_helpers.tr or { totalWidth = 0, scroll_offset = 0, scroll_direction = false }
 	
-	tr.opacity    = config.tr_opacity * main_updates.fade_value
-	tr.user_scale = config.tr_user_scale
-	tr.eff_scale  = main_updates.alt_tracker and draw_helpers.screen_scale * tr.user_scale * alt_scale or draw_helpers.screen_scale * tr.user_scale
-	tr.margin     = base_margin * tr.eff_scale
-	tr.bg_h       = 50 * tr.eff_scale
-	tr.bg_y       = main_updates.alt_tracker and 0 or draw_helpers.screen_h - tr.bg_h
-	tr.bg_color   = draw_helpers.apply_opacity(draw_helpers.color.background, tr.opacity)
-	tr.icon_d     = tr.bg_h * 1.1
-	tr.gap        = 18 * tr.eff_scale
-	tr.icon_y     = main_updates.alt_tracker and tr.bg_y + (tr.bg_h - tr.icon_d) / 2 or tr.bg_y + (tr.bg_h - tr.icon_d + tr.margin) / 2
+	tr.opacity      = config.tr_opacity * main_updates.fade_value
+	tr.user_scale   = config.tr_user_scale
+	tr.eff_scale    = main_updates.alt_tracker and draw_helpers.screen_scale * tr.user_scale * alt_scale or draw_helpers.screen_scale * tr.user_scale
+	tr.speed_scale  = tr.eff_scale * 1.0
+	tr.bounce_speed = 30 * tr.speed_scale
+	tr.scroll_speed = 90 * tr.speed_scale
+	tr.margin       = base_margin * tr.eff_scale
+	tr.bg_h         = 50 * tr.eff_scale
+	tr.bg_y         = main_updates.alt_tracker and 0 or draw_helpers.screen_h - tr.bg_h
+	tr.bg_color     = draw_helpers.apply_opacity(draw_helpers.color.background, tr.opacity)
+	tr.icon_d       = tr.bg_h * 1.1
+	tr.gap          = 18 * tr.eff_scale
+	tr.icon_y       = main_updates.alt_tracker and tr.bg_y + (tr.bg_h - tr.icon_d) / 2 or tr.bg_y + (tr.bg_h - tr.icon_d + tr.margin) / 2
 	
 	tr.font       = {
 		name   = "Segoe UI",
@@ -248,6 +251,31 @@ function draw_helpers.facility_tracker()
 	tr.ref_font = d2d.Font.new(tr.font.name, tr.font.size, tr.font.bold, tr.font.italic)
 	tr.char_w, tr.char_h = tr.ref_font:measure("A")
 	tr.txt_y = tr.bg_y + tr.bg_h - tr.char_h
+	
+	tr.scroll = false
+	local fits_on_screen = tr.totalWidth < draw_helpers.screen_w
+	local bounce         = tr.totalWidth < draw_helpers.screen_w + tr.icon_d * 4.509
+	if fits_on_screen then
+		tr.scroll_direction = false
+	elseif not bounce then
+		tr.scroll = true
+		tr.scroll_offset = tr.scroll_offset - main_updates.dt * tr.scroll_speed
+		if tr.scroll_offset < 0 - tr.totalWidth - tr.icon_d - tr.gap * 2 then
+			tr.scroll_offset = 0
+		end
+	elseif tr.scroll_offset >= 0 then
+		tr.scroll_offset = tr.scroll_offset - main_updates.dt * tr.bounce_speed
+		tr.scroll_direction = "left"
+	elseif tr.scroll_direction == "left" then
+		tr.scroll_offset = tr.scroll_offset - main_updates.dt * tr.bounce_speed
+		tr.scroll_direction = tr.scroll_offset <= draw_helpers.screen_w - tr.totalWidth and "right" or tr.scroll_direction
+	elseif tr.scroll_direction == "right" then
+		tr.scroll_offset = tr.scroll_offset + main_updates.dt * tr.bounce_speed
+	else
+		tr.scroll_offset = 0
+	end
+		
+	tr.start_x = fits_on_screen and (draw_helpers.screen_w - tr.totalWidth) / 2 or tr.scroll_offset
 	
 	tr.border_h      = base_border_h * tr.eff_scale
 	tr.end_border_w  = base_end_border_w * tr.eff_scale
@@ -330,7 +358,7 @@ end
 
 function draw_helpers.trades_ticker()
 	local config = core.config
-	local ti = draw_helpers.ti or { scroll_offset = 0 }
+	local ti = draw_helpers.ti or { totalWidth = 0, scroll_offset = 0 }
 	
 	ti.opacity     = config.ti_opacity * main_updates.fade_value
 	ti.user_scale  = config.ti_user_scale
@@ -342,7 +370,6 @@ function draw_helpers.trades_ticker()
 	ti.speed       = 90 * ti.speed_scale
 	ti.bg_color    = draw_helpers.apply_opacity(draw_helpers.color.background, ti.opacity)
 	ti.gap         = 10 * ti.eff_scale
-	ti.ex_gap      = ti.gap
 	ti.bg_y        = main_updates.alt_tracker and draw_helpers.screen_h - ti.bg_h or 0
 	ti.icon_y      = main_updates.alt_tracker and ti.bg_y + (ti.bg_h - ti.icon_d + ti.margin) / 2 or ti.bg_y + (ti.bg_h - ti.icon_d) / 2
 	
@@ -357,7 +384,11 @@ function draw_helpers.trades_ticker()
 	ti.char_w, ti.char_h = ti.ref_font:measure("A")
 	ti.txt_y = ti.bg_y + ti.bg_h - ti.char_h - ti.margin * 0.497
 	
-	ti.scroll_offset = ti.scroll_offset + ti.speed * main_updates.dt
+	ti.scroll_offset = ti.scroll_offset + main_updates.dt * ti.speed
+	if ti.scroll_offset > draw_helpers.screen_w + ti.totalWidth then
+		ti.scroll_offset = draw_helpers.screen_w
+	end
+	ti.start_x = draw_helpers.screen_w - ti.scroll_offset
 	
 	ti.border_h      = base_border_h * 0.56 * ti.eff_scale
 	ti.end_border_w  = base_end_border_w * 0.56 * ti.eff_scale

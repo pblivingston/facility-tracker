@@ -1,5 +1,4 @@
 
-lucky voucher tracker
 config version detection
 moon on environment overview
 ancient wyvern coins in hub
@@ -10,11 +9,12 @@ shares flag on items available
 detect start menu for showing tracker
 
 
+- added lucky voucher tracker
 - added text outline/shadow and removed count backgrounds for improved aesthetics and readability
+- full-length tracker now scrolls if longer than screen width
 - changed most updates to savedata hooks, drastically reducing on-frame calls
 - ship status/countdown and retrieval counts will no longer be incorrect on first run
 - moved moon updates to their own module
-
 
 
 
@@ -27,9 +27,13 @@ moon_updates	voucher_updates		facility_updates
 		-	-	-		core		-	-	-
 
 
-frame
-voucher icon
-login icon
+(full-length) tracker on bottom + voucher in top corner + clock in top corner + ticker on top
+	(in tent) tracker on top + delivery only in top corner + clock in top corner + ticker on bottom
+	(on map) tracker on top + mini voucher in top corner + clock in top corner + ticker on bottom
+
+(mini) tracker in bottom corner + voucher in any corner + clock in any corner + ticker on bottom/top
+	(in tent) tracker in top corner + delivery only in top corner + clock in top corner + ticker on top/bottom
+	(on map) tracker in top corner + mini voucher in top corner + clock in top corner + ticker on top/bottom
 
 
 
