@@ -15,7 +15,8 @@ detect start menu for showing tracker
 - changed most updates to savedata hooks, drastically reducing on-frame calls
 - ship status/countdown and retrieval counts will no longer be incorrect on first run
 - moved moon updates to their own module
-
+- reorganized images in images/hud_extensions
+- 'core' tables now load from data/hud_extensions
 
 
 		-	-	-  facility_tracker -	-	-
