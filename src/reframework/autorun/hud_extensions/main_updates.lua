@@ -208,15 +208,15 @@ function main_updates.get_hidden()
 	end
 	
 	core.active_quest        = mission_manager:call("get_IsActiveQuest")
+	main_updates.is_in_tent  = character:call("get_IsInAllTent")
 	
 	local quest_end          = mission_manager:call("get_IsQuestEndShowing")
 	local stage_id           = environment_manager:get_field("_CurrentStage")
-	local is_in_tent         = character:call("get_IsInAllTent")
 	local map_open           = (cur_map_flow == "Active" or cur_map_flow == "CloseModel")
-	local in_training        = stage_id == core.stage_idx.training and not (is_in_tent or map_open)
+	local in_training        = stage_id == core.stage_idx.training and not (main_updates.is_in_tent or map_open)
 	local radar_open         = (cur_map_flow == "RadarActive" or cur_map_flow == "WaitOpenReq" or cur_map_flow == "CloseRadarModel" or (cur_map_flow == "OpenRadar" and not map_proc)) and not (in_training or previous_arm_wrest)
-	local in_base_camp       = character:call("get_IsInBaseCamp") and not (is_in_tent or map_open)
-	local in_life_area       = character:call("get_IsInLifeArea") and not (is_in_tent or map_open or in_base_camp)
+	local in_base_camp       = character:call("get_IsInBaseCamp") and not (main_updates.is_in_tent or map_open)
+	local in_life_area       = character:call("get_IsInLifeArea") and not (main_updates.is_in_tent or map_open or in_base_camp)
 	local in_combat          = character:call("get_IsCombat")
 	local half_combat        = character:call("get_IsHalfCombat")
 	local is_bowling         = minigame_manager:get_field("_Bowling"):call("get_IsPlaying")
@@ -228,7 +228,7 @@ function main_updates.get_hidden()
 	local draw_at_camp       = previous_camp_sit and not config.hide_at_camp
 	
 	local dont_show          = config.show_when == "Don't show when:"
-	local hide_in_tent       = is_in_tent and config.hide_in_tent
+	local hide_in_tent       = main_updates.is_in_tent and config.hide_in_tent
 	local hide_on_map        = map_open and config.hide_on_map
 	local hide_in_quest      = core.active_quest and config.hide_in_quest and not config.hide_in_qstcbt
 	local hide_in_combat     = in_combat and config.hide_in_combat and not config.hide_in_qstcbt
@@ -236,7 +236,7 @@ function main_updates.get_hidden()
 	local hide_in_hlfcbt     = half_combat and config.hide_in_hlfcbt and (config.hide_in_combat or (core.active_quest and config.hide_in_qstcbt))
 
 	local only_show          = config.show_when == "Only show when:"
-	local draw_in_tent       = is_in_tent and config.draw_in_tent
+	local draw_in_tent       = main_updates.is_in_tent and config.draw_in_tent
 	local draw_on_map        = map_open and config.draw_on_map
 	local draw_in_life       = in_life_area and config.draw_in_life
 	local draw_in_base       = in_base_camp and config.draw_in_base
@@ -244,10 +244,10 @@ function main_updates.get_hidden()
 
 	local dont_show_hide     = dont_show and (hide_in_tent or hide_on_map or hide_in_quest or hide_in_combat or hide_in_qstcbt or hide_in_hlfcbt)
 	local only_show_hide     = only_show and not (draw_in_tent or draw_on_map or draw_in_life or draw_in_base or draw_in_train)
-	local hide_w_hud         = config.hide_w_hud and not (slider_visible or draw_w_bowling or draw_w_wrestle or draw_at_table or draw_at_camp or is_in_tent or map_open)
+	local hide_w_hud         = config.hide_w_hud and not (slider_visible or draw_w_bowling or draw_w_wrestle or draw_at_table or draw_at_camp or main_updates.is_in_tent or map_open)
 	local auto_hide          = dont_show_hide or only_show_hide or hide_w_hud
 	
-	main_updates.alt_tracker   = map_open or is_in_tent
+	main_updates.alt_tracker   = map_open or main_updates.is_in_tent
 	main_updates.hide_tracker  = auto_hide and config.auto_hide and not (radial_visible and config.tr_radialMenu)
 	main_updates.hide_ticker   = auto_hide and config.auto_hide_t and not (radial_visible and config.ti_radialMenu)
 	main_updates.hide_voucher  = auto_hide and config.auto_hide_v and not (radial_visible and config.vo_radialMenu)

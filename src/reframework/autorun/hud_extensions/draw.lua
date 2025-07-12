@@ -82,7 +82,6 @@ function draw.facility_tracker()
 	}
 	
 	tr.totalWidth = draw_helpers.measureElements(tracker_elements, tr)
-	tr.start_x    = (draw_helpers.screen_w - tr.totalWidth) / 2
 	
 	-- Draw the tracker
 	d2d.fill_rect(0, tr.bg_y, draw_helpers.screen_w, tr.bg_h, tr.bg_color)
@@ -91,7 +90,16 @@ function draw.facility_tracker()
 	if tr.sect_border_w > 0 then
 		d2d.image(img.border_section, tr.sect_border_x, tr.border_y, tr.sect_border_w, tr.border_h, tr.opacity)
 	end
-	draw_helpers.drawElements(tracker_elements, tr, false)
+	if tr.scroll then
+		while tr.start_x < draw_helpers.screen_w do
+			local xPos = draw_helpers.drawElements(tracker_elements, tr)
+			d2d.image(img.spacer, xPos, tr.icon_y, tr.icon_d, tr.icon_d, tr.opacity)
+			tr.start_x = xPos + tr.icon_d + tr.gap
+		end
+	else
+		draw_helpers.drawElements(tracker_elements, tr)
+		tr.start_x = tr.start_x + tr.totalWidth + tr.gap
+	end
 end
 
 function draw.mini_tracker()
@@ -158,12 +166,7 @@ function draw.trades_ticker()
 		{ type = "text",  value = "And we loop around again." }
 	}
 	
-	ti.totalWidth = draw_helpers.measureElements(ticker_elements, ti) + ti.ex_gap
-	if ti.scroll_offset > (draw_helpers.screen_w + ti.totalWidth) then
-		ti.scroll_offset = draw_helpers.screen_w
-	end
-	ti.scroll_x = draw_helpers.screen_w - ti.scroll_offset
-	ti.start_x = ti.scroll_x
+	ti.totalWidth = draw_helpers.measureElements(ticker_elements, ti) + ti.gap
 		
 	-- Draw the ticker
 	d2d.fill_rect(0, ti.bg_y, draw_helpers.screen_w, ti.bg_h, ti.bg_color)
@@ -193,21 +196,26 @@ function draw.voucher_tracker()
 	
 	local elements = {
 		{ type = "icon",  value = vo_icon[0],
-			frame = img.frame_v },
+			frame = img.frame_v,
+			draw = not main_updates.is_in_tent },
 		{ type = "icon",  value = vo_icon[1],
-			frame = img.frame_v },
+			frame = img.frame_v,
+			draw = not main_updates.is_in_tent },
 		{ type = "icon",  value = vo_icon[2],
-			frame = img.frame_v },
+			frame = img.frame_v,
+			draw = not main_updates.is_in_tent },
 		{ type = "icon",  value = vo_icon[3],
-			frame = img.frame_v },
+			frame = img.frame_v,
+			draw = not main_updates.is_in_tent },
 		{ type = "icon",  value = vo_icon[4],
-			frame = img.frame_v },
+			frame = img.frame_v,
+			draw = not main_updates.is_in_tent },
 		{ type = "icon",  value = img.spacer,
-			draw = savedata.vouchers.ready },
+			draw = savedata.vouchers.ready and not main_updates.is_in_tent },
 		{ type = "text",  value = savedata.vouchers.days,
-			draw = savedata.vouchers.ready },
+			draw = savedata.vouchers.ready and not main_updates.alt_tracker },
 		{ type = "icon",  value = img.delivery,
-			--count = savedata.vouchers.days,
+			count = main_updates.alt_tracker and savedata.vouchers.days,
 			draw = savedata.vouchers.ready },
 	}
 	
