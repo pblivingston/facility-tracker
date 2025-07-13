@@ -2,6 +2,37 @@ local core = require("hud_extensions/core")
 
 local config_helpers = { re_ui = {} }
 
+local hotkeys = {
+	["tr_hotkey"] = { message = core.config.tr_hotkey or "None", listening = false, draw = "draw_tracker" },
+	["mi_hotkey"] = { message = core.config.mi_hotkey or "None", listening = false, draw = "mini_tracker" },
+	["ti_hotkey"] = { message = core.config.ti_hotkey or "None", listening = false, draw = "draw_ticker"  },
+	["vo_hotkey"] = { message = core.config.vo_hotkey or "None", listening = false, draw = "draw_voucher" },
+	["ck_hotkey"] = { message = core.config.ck_hotkey or "None", listening = false, draw = "draw_clock"   },
+	["mo_hotkey"] = { message = core.config.mo_hotkey or "None", listening = false, draw = "draw_moon"    }
+}
+
+function config_helpers.get_new_hotkey(hotkey)
+	for key_name, key_index in pairs(core.imgui_keys) do
+		if imgui.is_key_pressed(key_index) then
+			core.config[hotkey] = key_name
+			hotkeys[hotkey].message = key_name
+			hotkeys[hotkey].listening = false
+			core.save_config()
+			break
+		end
+	end
+end
+
+function config_helpers.hotkey_toggle()
+	for hk_name, hk_data in pairs(hotkeys) do
+		local hotkey = core.config[hk_name]
+		if imgui.is_key_pressed(core.imgui_keys[hotkey]) and hotkey ~= "None" then
+			core.config[hk_data.draw] = not core.config[hk_data.draw]
+			core.save_config()
+		end
+	end
+end
+
 function config_helpers.alignedText(text)
 	local cursor_pos = imgui.get_cursor_pos()
 	local new_x = cursor_pos.x - 3.001
@@ -63,12 +94,12 @@ function config_helpers.main(label, setting, hotkey)
 	local button_x = config_helpers.re_ui.window_w - button_w + 23
 	imgui.set_cursor_pos(Vector2f.new(button_x, cursor_pos.y))
 	if imgui.button("Hotkey##" .. hotkey, Vector2f.new(button_w, config_helpers.re_ui.button_h)) then
-		core.hotkeys[hotkey].listening = true
-		core.hotkeys[hotkey].message = "press a key..."
+		hotkeys[hotkey].listening = true
+		hotkeys[hotkey].message = "press a key..."
 	end
-	if core.hotkeys[hotkey].listening then core.get_new_hotkey(hotkey) end
+	if hotkeys[hotkey].listening then config_helpers.get_new_hotkey(hotkey) end
 	imgui.same_line()
-	imgui.text(core.hotkeys[hotkey].message)
+	imgui.text(hotkeys[hotkey].message)
 end
 
 function config_helpers.slider(label, setting, low, high)

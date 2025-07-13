@@ -148,54 +148,58 @@ function facility_updates.init_retrieval()
 	core.savedata.retrieval.full = any_full
 end
 
-function facility_updates.register_hooks()
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cDiningParam"):get_method("addSuplyNum"),
-		nil, function(retval) facility_updates.get_ration_state(); return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cDiningParam"):get_method("setSupplyNum"),
-		nil, function(retval) facility_updates.get_ration_state(); return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cShipParam"):get_method("setDayCount"),
-		nil, function(retval) facility_updates.get_ship_state(); return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cShipParam"):get_method("setStatus"),
-		nil, function(retval) facility_updates.get_ship_state(); return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cLargeWorkshopParam"):get_method("addRewardItem"),
-		nil, function(retval) facility_updates.get_shares_state(); return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cLargeWorkshopParam"):get_method("clearRewardItem"),
-		function(args) clear_shares() end, nil
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.FacilityRallus"):get_method("supplyTimerGoal"),
-		nil, function(retval) facility_updates.get_nest_state(); return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.FacilityRallus"):get_method("getSupplyItem"),
-		nil, function(retval) facility_updates.get_nest_state(); return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("clearCollectionItem"),
-		function(args) clear_retrieval(sdk.to_managed_object(args[2])) end,
-		function(retval) retrieval_full(); return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("clearAllCollectionItem"),
-		function(args) clear_retrieval(sdk.to_managed_object(args[2])) end,
-		function(retval) retrieval_full(); return retval end
-	)
-	sdk.hook(
-		sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("addCollectionItem"),
-		function(args) thread.get_hook_storage()["npc"] = sdk.to_managed_object(args[2]) end, 
-		function(retval) update_retrieval(thread.get_hook_storage()["npc"]); retrieval_full(); return retval end
-	)
-end
+---------------------------------------------------
+---------------------------------------------------
+
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cDiningParam"):get_method("addSuplyNum"),
+	nil, function(retval) facility_updates.get_ration_state(); return retval end
+)
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cDiningParam"):get_method("setSupplyNum"),
+	nil, function(retval) facility_updates.get_ration_state(); return retval end
+)
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cShipParam"):get_method("setDayCount"),
+	nil, function(retval) facility_updates.get_ship_state(); return retval end
+)
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cShipParam"):get_method("setStatus"),
+	nil, function(retval) facility_updates.get_ship_state(); return retval end
+)
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cLargeWorkshopParam"):get_method("addRewardItem"),
+	nil, function(retval) facility_updates.get_shares_state(); return retval end
+)
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cLargeWorkshopParam"):get_method("clearRewardItem"),
+	function(args) clear_shares() end, nil
+)
+sdk.hook(
+	sdk.find_type_definition("app.FacilityRallus"):get_method("supplyTimerGoal"),
+	nil, function(retval) facility_updates.get_nest_state(); return retval end
+)
+sdk.hook(
+	sdk.find_type_definition("app.FacilityRallus"):get_method("getSupplyItem"),
+	nil, function(retval) facility_updates.get_nest_state(); return retval end
+)
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("clearCollectionItem"),
+	function(args) clear_retrieval(sdk.to_managed_object(args[2])) end,
+	function(retval) retrieval_full(); return retval end
+)
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("clearAllCollectionItem"),
+	function(args) clear_retrieval(sdk.to_managed_object(args[2])) end,
+	function(retval) retrieval_full(); return retval end
+)
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cCollectionNPCParam"):get_method("addCollectionItem"),
+	function(args) thread.get_hook_storage()["npc"] = sdk.to_managed_object(args[2]) end, 
+	function(retval) update_retrieval(thread.get_hook_storage()["npc"]); retrieval_full(); return retval end
+)
+
+---------------------------------------------------
+---------------------------------------------------
 
 return facility_updates

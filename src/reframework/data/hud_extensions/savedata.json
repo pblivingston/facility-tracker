@@ -1,0 +1,15 @@
+{
+	"vouchers":  { "size": 5 },
+	"Rations":   { "size": 10, "timer": 600 },
+	"ship":      {},
+	"Shares":    { "size": 100 },
+	"Nest":      { "count": 0, "size": 5, "full": false, "timer": 1200 },
+	"pugee":     { "timer": 2520 },
+	"retrieval": {
+		"Rysher": {},
+		"Murtabak": {},
+		"Apar": {},
+		"Plumpeach": {},
+		"Sabar": {}
+  }
+}

@@ -1,21 +1,16 @@
 local core             = require("hud_extensions/core")
+local main_updates     = require("hud_extensions/main_updates")
 local facility_updates = require("hud_extensions/facility_updates")
 local voucher_updates  = require("hud_extensions/voucher_updates")
 local moon_updates     = require("hud_extensions/moon_updates")
-local main_updates     = require("hud_extensions/main_updates")
+local bridge           = require("hud_extensions/bridge")
+local config_helpers   = require("hud_extensions/config_helpers")
 local config_window    = require("hud_extensions/config_window")
 local draw_helpers     = require("hud_extensions/draw_helpers")
 local draw             = require("hud_extensions/draw")
 
-core.load_config()
-main_updates.init_savedata()
-main_updates.register_hooks()
-moon_updates.register_hooks()
-facility_updates.register_hooks()
-voucher_updates.register_hooks()
-
 -----------------------------------------------------------
--- ON-FRAME UPDATE
+-- ON-FRAME UPDATES
 -----------------------------------------------------------
 
 re.on_frame(
@@ -25,7 +20,7 @@ re.on_frame(
 		local re_ui_open = reframework:is_drawing_ui()
 		if config_window.open and re_ui_open then config_window.draw_config() end
 		
-		core.hotkey_toggle()
+		config_helpers.hotkey_toggle()
 		
 		main_updates.time_delta()
 		
