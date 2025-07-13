@@ -22,9 +22,10 @@ detect start menu for showing tracker
 		-	-	-  facility_tracker -	-	-
 draw			config_window
 draw_helpers	config_helpers
-		-	-	-	main_updates	-	-	-
+		-	-	-		bridge		-	-	-
 moon_updates	voucher_updates		facility_updates	
 									facility_helpers
+		-	-	-	main_updates	-	-	-
 		-	-	-		core		-	-	-
 
 
@@ -36,6 +37,80 @@ moon_updates	voucher_updates		facility_updates
 	(in tent) tracker in top corner + delivery only in top corner + clock in top corner + ticker on top/bottom
 	(on map) tracker in top corner + mini voucher in top corner + clock in top corner + ticker on top/bottom
 
+
+
+top scale
+bottom scale
+
+node:facility tracker? (takes hotkey)
+	full
+		bars?
+		timers?
+		flags?
+		old icons?
+	mini
+		bars?
+		timers?
+		flags?
+		counts?
+		node:position [left, right]
+			default
+			tent
+			map
+		node:include [always, etc.]
+			ship
+			rations
+			retrieval
+			shares
+			nest
+			pugee
+	hide with hud?
+	manual swapping? (takes hotkey)
+	node:hiding/swapping [full-length, mini, hide]
+		node:village
+			default
+			tent
+			map
+			radial
+		node:base camp
+			default
+			bowling
+			arm wrestling
+			tables
+			camp
+			tent
+			mini tent
+			map
+			radial
+		node:training
+			default
+			mini tent
+			map
+			radial
+		node:field
+			default
+			camp
+			tent
+			mini tent
+			map
+			radial
+
+node:ticker? (takes hotkey)
+
+node:voucher? (takes hotkey)
+	mini
+		count?
+	dliv
+		count?
+	node:position
+		full tr [left, right]
+		mini tr [any corner]
+		none [any corner]
+		tent [left, right]
+		map [left, right]
+	hide with hud?
+	node:hiding/swapping
+		
 
 
 
