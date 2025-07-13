@@ -17,6 +17,7 @@ detect start menu for showing tracker
 - moved moon updates to their own module
 - reorganized images in images/hud_extensions
 - 'core' tables now load from data/hud_extensions
+- moved init_savedata to bridge
 
 
 		-	-	-  facility_tracker -	-	-
