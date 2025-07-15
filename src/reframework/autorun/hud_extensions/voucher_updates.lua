@@ -34,6 +34,27 @@ sdk.hook(
 	sdk.find_type_definition("app.Net_DeliveryService"):get_method("saveLoginBonusDataEnd"),
 	nil, function(retval) voucher_updates.get_login_bonus(); return retval end
 )
+sdk.hook(
+	sdk.find_type_definition("app.Net_DeliveryService"):get_method("isNeedPickupLoginBonus"),
+	nil, function(retval)
+		core.savedata.vouchers.ready = (sdk.to_int64(retval) & 1) == 1
+		return retval
+	end
+)
+sdk.hook(
+	sdk.find_type_definition("app.Net_DeliveryService"):get_method("getElapsedDays"),
+	nil, function(retval)
+		core.savedata.vouchers.days = sdk.to_int64(retval)
+		return retval
+	end
+)
+sdk.hook(
+	sdk.find_type_definition("app.savedata.cBasicParam"):get_method("getTicketNum"),
+	nil, function(retval)
+		core.savedata.vouchers.count = sdk.to_int64(retval)
+		return retval
+	end
+)
 
 ---------------------------------------------------
 ---------------------------------------------------
