@@ -62,5 +62,6 @@
     "ti_user_scale"    : 1.0,
     "ti_opacity"       : 1.0,
 	"vo_opacity"       : 1.0,
-	"ck_opacity"       : 1.0
+	"ck_opacity"       : 1.0,
+	"version"          : "1.0.0"
 }

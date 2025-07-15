@@ -26,6 +26,21 @@ function core.keys_to_num(tbl)
 	return new_tbl
 end
 
+local function compare_versions(a, b)
+    local a_parts = {}
+    for part in string.gmatch(a, "%d+") do table.insert(a_parts, tonumber(part)) end
+    local b_parts = {}
+    for part in string.gmatch(b, "%d+") do table.insert(b_parts, tonumber(part)) end
+
+    for i = 1, math.max(#a_parts, #b_parts) do
+        local a_num = a_parts[i] or 0
+        local b_num = b_parts[i] or 0
+        if a_num < b_num then return -1 end
+        if a_num > b_num then return 1 end
+    end
+    return 0 -- versions are equal
+end
+
 -- function core.load_data(folder)
 	-- local dir = folder and "hud_extensions\\" .. folder or "hud_extensions"
 	-- for _, path in ipairs(fs.glob(dir .. [[\\.*json]])) do
@@ -55,15 +70,20 @@ end
 
 function core.load_config()
     local loaded_config = json.load_file(config_path)
-    if loaded_config then
-        for key, value in pairs(loaded_config) do
-            if core.config[key] ~= nil then
-                core.config[key] = value
-            end
-        end
-    else
-        core.save_config()
-    end
+	if not loaded_config then core.save_config() return end
+	local version = loaded_config.version or "0.0.0"
+	if compare_versions(version, core.config.version) > 0 then core.save_config() return end
+	local conversion = compare_versions(version, core.config.version) < 0 and json.load_file("hud_extensions/conversion/" .. version .. ".json")
+	
+	for key, value in pairs(loaded_config) do
+		if key == "version" then goto continue end
+		key = conversion and conversion[key] and conversion[key] or key
+		if core.config[key] then
+			core.config[key] = value
+		end
+		::continue::
+	end
+	core.save_config()
 end
 
 core.singletons = {
