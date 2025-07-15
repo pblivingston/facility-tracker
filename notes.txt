@@ -111,7 +111,33 @@ node:voucher? (takes hotkey)
 		map [left, right]
 	hide with hud?
 	node:hiding/swapping
-		
+		node:village
+			default
+			tent
+			map
+			radial
+		node:base camp
+			default
+			bowling
+			arm wrestling
+			tables
+			camp
+			tent
+			mini tent
+			map
+			radial
+		node:training
+			default
+			mini tent
+			map
+			radial
+		node:field
+			default
+			camp
+			tent
+			mini tent
+			map
+			radial
 
 
 
