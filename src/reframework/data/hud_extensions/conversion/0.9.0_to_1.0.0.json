@@ -1,0 +1,10 @@
+{
+	"field_mappings": {
+		"old_setting_name": "new_setting_name"
+	},
+	"value_transforms": {
+		"show_when": {
+			"Hide when:": "Don't show when:"
+		}
+	}
+}

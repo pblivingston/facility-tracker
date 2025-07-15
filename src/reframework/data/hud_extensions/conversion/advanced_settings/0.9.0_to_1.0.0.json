@@ -1,0 +1,6 @@
+{
+	"field_mappings": {
+		"old_debug_setting": "debug_mode"
+	},
+	"value_transforms": {}
+}

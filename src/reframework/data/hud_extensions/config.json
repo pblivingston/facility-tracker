@@ -1,4 +1,5 @@
 {
+	"version"          : "1.0.0",
 	"tr_hotkey"        : "None",
 	"mi_hotkey"        : "None",
 	"ti_hotkey"        : "None",
@@ -62,5 +63,11 @@
     "ti_user_scale"    : 1.0,
     "ti_opacity"       : 1.0,
 	"vo_opacity"       : 1.0,
-	"ck_opacity"       : 1.0
+	"ck_opacity"       : 1.0,
+	"advanced_settings": {
+		"version": "1.0.0",
+		"debug_mode": false,
+		"performance_monitoring": true,
+		"experimental_features": false
+	}
 }
