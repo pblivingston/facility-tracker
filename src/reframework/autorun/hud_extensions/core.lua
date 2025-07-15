@@ -94,7 +94,7 @@ function core.save_config()
     
     -- Save each subtable to hud_extensions/user_config/[subtable].json
     for subtable_name, subtable_data in pairs(subtables) do
-        local subtable_path = "hud_extensions/user_config/" .. subtable_name .. ".json"
+        local subtable_path = "hud_extensions\\user_config\\" .. subtable_name .. ".json"
         json.dump_file(subtable_path, subtable_data)
     end
 end
@@ -157,8 +157,8 @@ end
 
 function core.load_subtables()
     -- Use fs.glob to enumerate user config files
-    for _, path in ipairs(fs.glob("hud_extensions/user_config/*.json")) do
-        local subtable_name = path:match("hud_extensions/user_config/([^/]+)%.json")
+    for _, path in ipairs(fs.glob("hud_extensions\\user_config\\*.json")) do
+        local subtable_name = path:match("hud_extensions\\user_config\\([^\\]+)%.json")
         if subtable_name then
             local loaded_subtable = json.load_file(path)
             if loaded_subtable then
@@ -212,7 +212,7 @@ end
 
 function core.migrate_config(config_data, from_version, to_version, subtable_name)
     -- Determine conversion directory
-    local conversion_dir = subtable_name == "" and "hud_extensions/conversion/" or "hud_extensions/conversion/" .. subtable_name .. "/"
+    local conversion_dir = subtable_name == "" and "hud_extensions\\conversion\\" or "hud_extensions\\conversion\\" .. subtable_name .. "\\"
     
     -- Try to find a conversion table for this migration
     local conversion_file = conversion_dir .. from_version .. "_to_" .. to_version .. ".json"
@@ -263,6 +263,24 @@ function core.migrate_config(config_data, from_version, to_version, subtable_nam
         if default_config[key] == nil then
             re.msg("Debug: Migrated config contains key '" .. key .. "' that doesn't exist in default config")
             return nil
+        end
+    end
+    
+    -- Apply key conversions if needed (additional step after migration)
+    if conversion_table.new_subtable then
+        -- For key conversion, look for files in the new subtable directory
+        local key_conversion_dir = "hud_extensions\\conversion\\" .. conversion_table.new_subtable .. "\\"
+        local key_conversion_file = key_conversion_dir .. to_version .. ".json"
+        local key_conversion_table = json.load_file(key_conversion_file)
+        if key_conversion_table and key_conversion_table.key_renames then
+            for old_key, new_key in pairs(key_conversion_table.key_renames) do
+                if migrated_config[old_key] ~= nil then
+                    migrated_config[new_key] = migrated_config[old_key]
+                    migrated_config[old_key] = nil
+                end
+            end
+        else
+            re.msg("Debug: Key conversion table not found at " .. key_conversion_file)
         end
     end
     

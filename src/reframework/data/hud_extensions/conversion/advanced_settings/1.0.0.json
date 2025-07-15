@@ -1,0 +1,6 @@
+{
+	"key_renames": {
+		"old_key_name": "new_key_name",
+		"deprecated_setting": "updated_setting"
+	}
+}

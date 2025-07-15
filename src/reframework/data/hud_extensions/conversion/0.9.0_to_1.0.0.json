@@ -6,5 +6,6 @@
 		"show_when": {
 			"Hide when:": "Don't show when:"
 		}
-	}
+	},
+	"new_subtable": "advanced_settings"
 }
