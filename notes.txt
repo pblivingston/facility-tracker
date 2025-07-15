@@ -29,6 +29,7 @@ moon_updates	voucher_updates		facility_updates
 		-	-	-	main_updates	-	-	-
 		-	-	-		core		-	-	-
 
+hunter ID: GP5J34FD
 
 (full-length) tracker on bottom + voucher in top corner + clock in top corner + ticker on top
 	(in tent) tracker on top + delivery only in top corner + clock in top corner + ticker on bottom
@@ -66,7 +67,6 @@ node:facility tracker? (takes hotkey)
 			nest
 			pugee
 	hide with hud?
-	manual swapping? (takes hotkey)
 	node:hiding/swapping [full-length, mini, hide]
 		node:village
 			default
