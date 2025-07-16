@@ -41,19 +41,11 @@ local function compare_versions(a, b)
     return 0 -- versions are equal
 end
 
--- function core.load_data(folder)
-	-- local dir = folder and "hud_extensions\\" .. folder or "hud_extensions"
-	-- for _, path in ipairs(fs.glob(dir .. [[\\.*json]])) do
-		-- local name = path:sub(#dir + 2, -6)
-		-- core[name] = core.keys_to_num(json.load_file(path))
-	-- end
--- end
-
 function core.load_data(folder)
 	local dir = folder and "hud_extensions\\" .. folder or "hud_extensions"
 	if folder then core[folder] = core[folder] or {} end
-	for _, path in ipairs(fs.glob(dir .. [[\\.*json]])) do
-		local name = path:sub(#dir + 2, -6)
+	for _, path in ipairs(fs.glob(dir .. [[\.*json]])) do
+		local name = path:match(".+\\(.-)%.json$")
 		if folder then
 			core[folder][name] = core.keys_to_num(json.load_file(path))
 		else
@@ -63,27 +55,55 @@ function core.load_data(folder)
 end
 
 local config_path = "facility_tracker.json"
+local user_config_dir = "hud_extensions\\user_config"
 
 function core.save_config()
-    json.dump_file(config_path, core.config)
+    local main = {}
+    for k, v in pairs(core.config) do
+        if type(v) ~= "table" then main[k] = v end
+    end
+    json.dump_file(config_path, main)
+    for k, v in pairs(core.config) do
+        if type(v) == "table" then
+            json.dump_file(user_config_dir .. "/" .. k .. ".json", v)
+        end
+    end
+end
+
+local function migrate(loaded, name)
+	local default = name and core.config[name] or core.config
+    local v, dv = loaded.version or "0.0.0", default.version or "0.0.0"
+    if compare_versions(v, dv) > 0 then return default end
+	local conv_path = name and "hud_extensions/conversion/" .. name or "hud_extensions/conversion"
+    local conv = compare_versions(v, dv) < 0 and json.load_file(conv_path .. "/" .. v .. ".json")
+    for k, val in pairs(loaded) do
+        if k ~= "version" then
+			local nk = conv[k].new_k or conv[k] or k
+			local mt = conv[k].migrate
+			if mt == "main" then
+				core.config[nk] = core.config[nk] and val
+			elseif mt and core.config[mt] then
+				core.config[mt][nk] = core.config[mt][nk] and val
+			else
+				default[nk] = default[nk] and val
+			end
+        end
+    end
+    default.version = dv
+    return default
 end
 
 function core.load_config()
-    local loaded_config = json.load_file(config_path)
-	if not loaded_config then core.save_config() return end
-	local version = loaded_config.version or "0.0.0"
-	if compare_versions(version, core.config.version) > 0 then core.save_config() return end
-	local conversion = compare_versions(version, core.config.version) < 0 and json.load_file("hud_extensions/conversion/" .. version .. ".json")
-	
-	for key, value in pairs(loaded_config) do
-		if key == "version" then goto continue end
-		key = conversion and conversion[key] and conversion[key] or key
-		if core.config[key] then
-			core.config[key] = value
-		end
-		::continue::
-	end
-	core.save_config()
+    local lm = json.load_file(config_path)
+    if lm then core.config = migrate(lm) end
+    for _, path in ipairs(fs.glob(user_config_dir .. [[\.*json]])) do
+        local n = path:match(".+\\(.-)%.json$")
+        local lsub = json.load_file(path)
+        if n and lsub and core.config[n] then
+            core.config[n] = migrate(lsub, n)
+        end
+    end
+    core.save_config()
 end
 
 core.singletons = {
