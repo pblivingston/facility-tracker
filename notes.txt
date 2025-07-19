@@ -175,6 +175,42 @@ main_updates.radar_open
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ship status 1 = in port
 ship status 2 = away from port
 

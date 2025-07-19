@@ -120,7 +120,6 @@ function draw_helpers.measureElements(elements, data)
 end
 
 function draw_helpers.drawElements(elements, data)
-	local config = core.config
 	local xPos = data.start_x
     for i, elem in ipairs(elements) do
 		if elem.draw == false then goto continue end

@@ -1,4 +1,26 @@
 {
-	"hotkey"  : "None",
-	"version" : "1.0.0"
+	"hotkey"    : "None",
+	"draw"      : true,
+	"full"      : {
+		"bars"      : true,
+		"timers"    : false,
+		"flags"     : true,
+		"old_icons" : true,
+		"speed"     : 1.0,
+		"opacity"   : 1.0
+	},
+	"mini"      : {
+		"bars"      : true,
+		"timers"    : false,
+		"flags"     : true,
+		"counts"    : true,
+		"ship"      : "Always",
+		"ration"    : "Always",
+		"retrieval" : "Always",
+		"shares"    : "Always",
+		"nest"      : "Always",
+		"pugee"     : "Always"
+	},
+	"auto_hide" : true,
+	"version"   : "1.0.0"
 }

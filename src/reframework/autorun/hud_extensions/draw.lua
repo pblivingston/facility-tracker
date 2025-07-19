@@ -318,9 +318,9 @@ function draw.moon_tracker()
 	
 	-- Draw the moon
 	d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, moon_a)
-	if not (main_updates.in_grand_hub and config.ghub_moon == "Nothing") and midx >= 0 then
+	if not (main_updates.in_grand_hub and config.ghub == "Nothing") and midx >= 0 then
 		d2d.image(moon, moon_x, moon_y, moon_w, moon_h, moon_a)
-		if config.draw_num then
+		if config.num then
 			d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, moon_a)
 		end
 	end

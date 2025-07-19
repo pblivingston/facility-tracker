@@ -16,7 +16,7 @@ function moon_updates.midx()
 	local hubm_idx = lmoon_data_success and lobby_moon_data:call("get_MoonIdx")
 	local qstm_idx = qmoon_data_success and quest_moon_data:call("get_MoonIdx")
 	local strm_idx = smoon_data_success and story_moon_data:call("get_MoonIdx")
-	return (main_updates.active_quest and strm_idx >= 0) and strm_idx or main_updates.active_quest and qstm_idx or (main_updates.in_grand_hub and core.config.ghub_moon == "Hub moon") and hubm_idx or moon_idx
+	return (main_updates.active_quest and strm_idx >= 0) and strm_idx or main_updates.active_quest and qstm_idx or (main_updates.in_grand_hub and core.config.moon.ghub == "Hub moon") and hubm_idx or moon_idx
 end
 
 function moon_updates.hide()

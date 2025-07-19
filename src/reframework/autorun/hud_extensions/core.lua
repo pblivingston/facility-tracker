@@ -90,29 +90,35 @@ function core.save_config()
     end
 end
 
-local function migrate(loaded, name, default, conv)
-	default = default or name and core.config[name] or core.config
-	if not conv then
-		local v, dv = loaded.version or "0.0.0", default.version or "0.0.0"
-		if compare_versions(v, dv) > 0 then return default end
-		local conv_path = name and "hud_extensions/conversion/" .. name or "hud_extensions/conversion"
-		conv = compare_versions(v, dv) < 0 and json.load_file(conv_path .. "/" .. v .. ".json")
-	end
-    for k, val in pairs(loaded) do
-        if k ~= "version" then
-			local ck = conv and conv[k]
-			if ck and type(ck) == "table" then
-				for _, nk in ipairs(ck) do
-					if core.get_nested(core.config, nk) then
-						core.set_nested(core.config, nk, val)
+local function migrate(loaded, name)
+	local default = name and core.config[name] or core.config
+	local v, dv = loaded.version or "0.0.0", default.version or "0.0.0"
+	if compare_versions(v, dv) > 0 then return default end
+	local conv_path = name and "hud_extensions/conversion/" .. name or "hud_extensions/conversion"
+	local conv = compare_versions(v, dv) < 0 and json.load_file(conv_path .. "/" .. v .. ".json")
+    
+	local function process_table(tbl, pk)
+		for k, val in pairs(tbl) do
+			if k ~= "version" then goto continue end
+				local bk = pk and (pk .. "." .. k) or k
+				local ck = conv and conv[bk]
+				if type(val) == "table" then
+					process_table(val, bk)
+				elseif ck and type(ck) == "table" then
+					for _, nk in ipairs(ck) do
+						if core.get_nested(core.config, nk) then
+							core.set_nested(core.config, nk, val)
+						end
 					end
+				elseif core.get_nested(default, ck or bk) then
+					core.set_nested(default, ck or bk, val)
 				end
-			elseif core.get_nested(default, ck or k) then
-				core.set_nested(default, ck or k, val)
+				::continue::
 			end
-        end
-    end
-    default.version = dv
+		end
+    
+	process_table(loaded)
+	default.version = dv
     return default
 end
 

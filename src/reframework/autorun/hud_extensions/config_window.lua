@@ -229,11 +229,11 @@ local function moon_tracker()
 				}
 				local hub_show_size = imgui.calc_text_size("Main moon")
 				imgui.push_item_width(hub_show_size.x + re_ui.font_size * 1.08 + 10)
-				config_helpers.combo("", "moon.ghub_moon", hub_show)
+				config_helpers.combo("", "moon.ghub", hub_show)
 				imgui.pop_item_width()
 			imgui.text("")
 			local checkboxes = {
-				{ "Show Numerals",           "moon.draw_num"  },
+				{ "Show Numerals",           "moon.num"  },
 				{ "Hide with Time & Season", "moon.auto_hide" }
 			}
 			config_helpers.checkboxes(checkboxes)

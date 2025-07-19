@@ -1,8 +1,8 @@
 {
 	"hotkey"    : "None",
 	"draw"      : true,
-	"draw_num"  : false,
-	"ghub_moon" : "Hub moon",
+	"num"       : false,
+	"ghub"      : "Hub moon",
 	"auto_hide" : true,
 	"version"   : "1.0.0"
 }
