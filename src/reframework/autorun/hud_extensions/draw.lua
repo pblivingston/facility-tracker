@@ -301,22 +301,26 @@ function draw.system_clock()
 end
 
 function draw.moon_tracker()
-	if moon_updates.midx == nil then print("midx is nil!"); return end
-	local config = core.config
+	local config = core.config.moon
 	local img = draw_helpers.img
-	local moon   = img["moon_" .. tostring(moon_updates.midx)]
-	local m_num  = img["m_num_" .. tostring(moon_updates.midx)]
-	local moon_x = (main_updates.moon_pos == "map" and 16 or main_updates.moon_pos == "rest" and 4 or 4) * draw_helpers.screen_scale
-	local moon_y = (main_updates.moon_pos == "map" and 202 or main_updates.moon_pos == "rest" and 1722 or 1922) * draw_helpers.screen_scale
+	local midx = moon_updates.midx()
+	if midx == nil then print("midx is nil!"); return end
+	local pos = main_updates.map_open and "map" or main_updates.rest_open and "rest"
+	
+	local moon   = img["moon_" .. tostring(midx)]
+	local m_num  = img["m_num_" .. tostring(midx)]
+	local moon_x = (pos == "map" and 16 or pos == "rest" and 4 or 4) * draw_helpers.screen_scale
+	local moon_y = (pos == "map" and 202 or pos == "rest" and 1722 or 1922) * draw_helpers.screen_scale
 	local moon_w = 140 * draw_helpers.screen_scale
 	local moon_h = 140 * draw_helpers.screen_scale
-	local moon_a = (main_updates.moon_pos == "map" and 0.9 or 1) * main_updates.fade_value_m
+	local moon_f = config.auto_hide and main_updates.fade or 1
+	local moon_a = (pos == "map" and 0.9 or 1) * moon_f
 	
 	-- Draw the moon
 	d2d.image(img.m_ring, moon_x, moon_y, moon_w, moon_h, moon_a)
-	if not (core.in_grand_hub and config.ghub_moon == "Nothing") and moon_updates.midx >= 0 then
+	if not (main_updates.in_grand_hub and config.ghub_moon == "Nothing") and midx >= 0 then
 		d2d.image(moon, moon_x, moon_y, moon_w, moon_h, moon_a)
-		if config.draw_m_num then
+		if config.draw_num then
 			d2d.image(m_num, moon_x, moon_y, moon_w, moon_h, moon_a)
 		end
 	end

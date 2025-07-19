@@ -1,0 +1,7 @@
+{
+	"hotkey"       : "None",
+	"draw"         : true,
+	"auto_hide"    : true,
+	"non_meridian" : false,
+	"version"      : "1.0.0"
+}

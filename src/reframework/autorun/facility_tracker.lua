@@ -28,17 +28,21 @@ re.on_frame(
 			core.first_run = true
 			main_updates.previous_hidden = true
 			main_updates.previous_fading = true
+			main_updates.slider_visible = false
 			return
         end
 		
 		-- print("starting active-player updates!")
 		
-		main_updates.get_fade()
-		main_updates.get_hidden()
+		-- main_updates.get_hidden()
+		main_updates.fading()
+		main_updates.delays()
+		main_updates.on_frame()
 		
-		moon_updates.get_midx()
+		-- moon_updates.get_midx()
 		facility_updates.get_pugee_state()
 		
+		main_updates.slider_visible = false
 		core.first_run = false
     end
 )
@@ -169,7 +173,7 @@ d2d.register(
 		if core.config.draw_clock and not main_updates.hide_clock then
 			draw.system_clock()
 		end
-		if core.config.draw_moon and not (main_updates.hide_moon or moon_updates.midx == nil) then
+		if core.config.moon.draw and not moon_updates.hide() then
 			draw.moon_tracker()
 		end
     end

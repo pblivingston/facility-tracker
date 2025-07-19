@@ -1,0 +1,22 @@
+{
+	"tr_hotkey"      : [ "facility.hotkey" ],
+	"draw_tracker"   : [ "facility.draw" ],
+	"draw_bars"      : [ "facility.full.draw_bars", "facility.mini.draw_bars" ],
+	"ti_hotkey"      : [ "ticker.hotkey" ],
+	"draw_ticker"    : [ "ticker.draw" ],
+	"draw_ship"      : [ "ticker.draw_ship" ],
+	"draw_trades"    : [ "ticker.draw_trades" ],
+	"auto_hide_t"    : [ "ticker.auto_hide" ],
+	"vo_hotkey"      : [ "voucher.hotkey" ],
+	"draw_voucher"   : [ "voucher.draw" ],
+	"auto_hide_v"    : [ "voucher.auto_hide" ],
+	"ck_hotkey"      : [ "clock.hotkey" ],
+	"draw_clock"     : [ "clock.draw" ],
+	"non_meridian_c" : [ "clock.non_meridian" ],
+	"auto_hide_c"    : [ "clock.auto_hide" ],
+	"mo_hotkey"      : [ "moon.hotkey" ],
+	"draw_moon"      : [ "moon.draw" ],
+	"draw_m_num"     : [ "moon.draw_num" ],
+	"ghub_moon"      : [ "moon.ghub_moon" ],
+	"auto_hide_m"    : [ "moon.auto_hide" ]
+}

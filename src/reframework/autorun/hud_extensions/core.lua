@@ -1,5 +1,8 @@
 local core = {}
 
+local config_path = "facility_tracker.json"
+local user_config_dir = "hud_extensions\\user_config"
+
 function core.lerp(a, b, t)
     return a + (b - a) * t
 end
@@ -24,6 +27,26 @@ function core.keys_to_num(tbl)
 		new_tbl[k] = v
 	end
 	return new_tbl
+end
+
+function core.get_nested(tbl, key)
+    for part in string.gmatch(key, "[^%.]+") do
+        if tbl == nil then return nil end
+        tbl = tbl[part]
+    end
+    return tbl
+end
+
+function core.set_nested(tbl, key, value)
+    local parts = {}
+    for part in string.gmatch(key, "[^%.]+") do
+        table.insert(parts, part)
+    end
+    for i = 1, #parts-1 do
+        tbl = tbl[parts[i]]
+        if tbl == nil then return end
+    end
+    tbl[parts[#parts]] = value
 end
 
 local function compare_versions(a, b)
@@ -54,9 +77,6 @@ function core.load_data(folder)
 	end
 end
 
-local config_path = "facility_tracker.json"
-local user_config_dir = "hud_extensions\\user_config"
-
 function core.save_config()
     local main = {}
     for k, v in pairs(core.config) do
@@ -70,22 +90,25 @@ function core.save_config()
     end
 end
 
-local function migrate(loaded, name)
-	local default = name and core.config[name] or core.config
-    local v, dv = loaded.version or "0.0.0", default.version or "0.0.0"
-    if compare_versions(v, dv) > 0 then return default end
-	local conv_path = name and "hud_extensions/conversion/" .. name or "hud_extensions/conversion"
-    local conv = compare_versions(v, dv) < 0 and json.load_file(conv_path .. "/" .. v .. ".json")
+local function migrate(loaded, name, default, conv)
+	default = default or name and core.config[name] or core.config
+	if not conv then
+		local v, dv = loaded.version or "0.0.0", default.version or "0.0.0"
+		if compare_versions(v, dv) > 0 then return default end
+		local conv_path = name and "hud_extensions/conversion/" .. name or "hud_extensions/conversion"
+		conv = compare_versions(v, dv) < 0 and json.load_file(conv_path .. "/" .. v .. ".json")
+	end
     for k, val in pairs(loaded) do
         if k ~= "version" then
-			local nk = conv[k].new_k or conv[k] or k
-			local mt = conv[k].migrate
-			if mt == "main" then
-				core.config[nk] = core.config[nk] and val
-			elseif mt and core.config[mt] then
-				core.config[mt][nk] = core.config[mt][nk] and val
-			else
-				default[nk] = default[nk] and val
+			local ck = conv and conv[k]
+			if ck and type(ck) == "table" then
+				for _, nk in ipairs(ck) do
+					if core.get_nested(core.config, nk) then
+						core.set_nested(core.config, nk, val)
+					end
+				end
+			elseif core.get_nested(default, ck or k) then
+				core.set_nested(default, ck or k, val)
 			end
         end
     end

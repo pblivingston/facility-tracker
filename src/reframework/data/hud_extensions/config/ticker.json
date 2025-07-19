@@ -1,0 +1,8 @@
+{
+	"hotkey"      : "None",
+	"draw"        : true,
+	"draw_ship"   : true,
+	"draw_trades" : true,
+	"auto_hide"   : true,
+	"version"     : "1.0.0"
+}

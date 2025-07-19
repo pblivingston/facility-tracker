@@ -41,8 +41,10 @@ hunter ID: GP5J34FD
 
 
 
-top scale
-bottom scale
+top scale (slider)
+bottom scale (slider)
+tent/map scale (slider)
+corner opacities (sliders)
 
 node:facility? (takes hotkey)
 	full
@@ -50,6 +52,8 @@ node:facility? (takes hotkey)
 		timers?
 		flags?
 		old icons?
+		oversize scroll speed (slider)
+		opacity (slider)
 	mini
 		bars?
 		timers?
@@ -68,79 +72,105 @@ node:facility? (takes hotkey)
 			pugee
 	hide with hud?
 	node:hiding/swapping [full, mini, hide]
+		map
+		tent
+		temp tent
+		camp gear
 		node:village
 			default
-			tent
-			map
 			radial
 		node:base camp
 			default
-			bowling
-			arm wrestling
-			tables
-			camp
-			tent
-			mini tent
-			map
 			radial
+			tables
+			arm wrestling
+			bowling
 		node:training
 			default
-			mini tent
-			map
 			radial
 		node:field
 			default
-			camp
-			tent
-			mini tent
-			map
+			radial
+		node:quest
+			default
+			radial
+		node:combat
+			default
+			radial
+		node:half combat
+			default
+			radial
+		node:quest combat
+			default
+			radial
+		node:quest half combat
+			default
 			radial
 
 node:ticker? (takes hotkey)
+	ship?
+	trades?
+	node:position (if not full tr) [top, bottom]
+		default
+		tent
+		map
+	speed (slider)
+	opacity (slider)
+	bottom tent/map scale (slider)
+	hide with hud?
+	node:hiding [?]
 
 node:voucher? (takes hotkey)
-	mini
-		count?
-	dliv
-		count?
+	mini count?
+	dliv count?
 	node:position
+		default [any corner]
 		full tr [left, right]
-		mini tr [any corner]
-		none [any corner]
 		tent [left, right]
 		map [left, right]
 	hide with hud?
 	node:hiding/swapping [full, mini, dliv, hide]
-		node:village
-			default
-			tent
-			map
-			radial
-		node:base camp
-			default
-			bowling
-			arm wrestling
-			tables
-			camp
-			tent
-			mini tent
-			map
-			radial
-		node:training
-			default
-			mini tent
-			map
-			radial
-		node:field
-			default
-			camp
-			tent
-			mini tent
-			map
-			radial
 
 node:clock? (takes hotkey)
-	
+	24-h?
+	node:position
+		default [any corner]
+		full tr [left, right]
+		tent [left, right]
+		map [left, right]
+	hide with hud?
+	node:hiding [?]
+
+node:moon? (takes hotkey)
+	hub moon [hub, main, none]
+	numerals?
+	hide with time/season?
+
+
+
+main_updates.dt
+main_updates.fade
+main_updates.hud_hidden
+main_updates.in_life_area
+main_updates.in_base_camp
+main_updates.in_training
+main_updates.in_field        -- not life area, base camp, training, quest, combat, or half combat
+main_updates.active_quest
+main_updates.in_combat
+main_updates.half_combat
+main_updates.quest_combat    -- active quest and in combat
+main_updates.qhalf_combat    -- active quest and half combat
+main_updates.in_tent
+main_updates.in_temp_tent
+main_updates.map_open
+main_updates.radial_visible
+main_updates.slider_visible
+main_updates.camp_sitting
+main_updates.is_bowling
+main_updates.arm_wrestling
+main_updates.table_sitting
+main_updates.rest_open
+main_updates.radar_open
 
 
 

@@ -3,20 +3,19 @@ local core = require("hud_extensions/core")
 local config_helpers = { re_ui = {} }
 
 local hotkeys = {
-	["tr_hotkey"] = { message = core.config.tr_hotkey or "None", listening = false, draw = "draw_tracker" },
-	["mi_hotkey"] = { message = core.config.mi_hotkey or "None", listening = false, draw = "mini_tracker" },
-	["ti_hotkey"] = { message = core.config.ti_hotkey or "None", listening = false, draw = "draw_ticker"  },
-	["vo_hotkey"] = { message = core.config.vo_hotkey or "None", listening = false, draw = "draw_voucher" },
-	["ck_hotkey"] = { message = core.config.ck_hotkey or "None", listening = false, draw = "draw_clock"   },
-	["mo_hotkey"] = { message = core.config.mo_hotkey or "None", listening = false, draw = "draw_moon"    }
+	["facility"] = { message = core.config.facility.hotkey or "None", listening = false },
+	["ticker"] = { message = core.config.ticker.hotkey or "None", listening = false },
+	["voucher"] = { message = core.config.voucher.hotkey or "None", listening = false },
+	["clock"] = { message = core.config.clock.hotkey or "None", listening = false },
+	["moon"] = { message = core.config.moon.hotkey or "None", listening = false }
 }
 
-function config_helpers.get_new_hotkey(hotkey)
+function config_helpers.get_new_hotkey(hk_name)
 	for key_name, key_index in pairs(core.imgui_keys) do
 		if imgui.is_key_pressed(key_index) then
-			core.config[hotkey] = key_name
-			hotkeys[hotkey].message = key_name
-			hotkeys[hotkey].listening = false
+			core.config[hk_name].hotkey = key_name
+			hotkeys[hk_name].message = key_name
+			hotkeys[hk_name].listening = false
 			core.save_config()
 			break
 		end
@@ -24,10 +23,14 @@ function config_helpers.get_new_hotkey(hotkey)
 end
 
 function config_helpers.hotkey_toggle()
-	for hk_name, hk_data in pairs(hotkeys) do
-		local hotkey = core.config[hk_name]
-		if imgui.is_key_pressed(core.imgui_keys[hotkey]) and hotkey ~= "None" then
-			core.config[hk_data.draw] = not core.config[hk_data.draw]
+	for _, hk_data in pairs(hotkeys) do
+		if hk_data.listening then return end
+	end
+	
+	for hk_name, _ in pairs(hotkeys) do
+		local key = core.config[hk_name].hotkey
+		if imgui.is_key_pressed(core.imgui_keys[key]) and key ~= "None" then
+			core.config[hk_name].draw = not core.config[hk_name].draw
 			core.save_config()
 		end
 	end
@@ -43,8 +46,12 @@ function config_helpers.alignedText(text)
 end
 
 function config_helpers.checkbox(label, setting)
-	local dCheck, check = imgui.checkbox(label, core.config[setting])
-	if dCheck then core.config[setting] = check; core.save_config() end
+    local current = core.get_nested(core.config, setting)
+    local dCheck, check = imgui.checkbox(label, current)
+    if dCheck then
+        core.set_nested(core.config, setting, check)
+        core.save_config()
+    end
 end
 
 function config_helpers.checkboxes(checkboxes)
@@ -63,10 +70,14 @@ function config_helpers.checkboxes(checkboxes)
 end
 
 function config_helpers.combo(label, setting, options)
-	local index = core.get_index(options, core.config[setting])
-	local lbl = string.format("%s##%s", label, setting)
-	local dIdx, newIdx = imgui.combo(lbl, index, options)
-	if dIdx then core.config[setting] = options[newIdx]; core.save_config() end
+    local current_value = core.get_nested(core.config, setting)
+    local index = core.get_index(options, current_value)
+    local lbl = string.format("%s##%s", label, setting)
+    local dIdx, newIdx = imgui.combo(lbl, index, options)
+    if dIdx then
+        core.set_nested(core.config, setting, options[newIdx])
+        core.save_config()
+    end
 end
 
 function config_helpers.combos(combos)
@@ -103,23 +114,30 @@ function config_helpers.main(label, setting, hotkey)
 end
 
 function config_helpers.slider(label, setting, low, high)
-	imgui.text(label .. ":")
-	imgui.same_line()
-	
-	local cursor_pos = imgui.get_cursor_pos()
-	local txtbox_w = config_helpers.re_ui.font_size * 2.5
-	local txtbox_x = config_helpers.re_ui.window_w - txtbox_w + 23
-	imgui.set_cursor_pos(Vector2f.new(txtbox_x, cursor_pos.y))
-	imgui.push_item_width(txtbox_w)
-	local txt_label = string.format(" (%.1f to %.1f)", low, high)
-	local dTxt, txt_string, _, _ = imgui.input_text(txt_label, core.config[setting])
-	local txt = math.min(high, math.max(low, tonumber(txt_string) or 1))
-	if dTxt then core.config[setting] = txt; core.save_config() end
-	imgui.pop_item_width()
-	
-	local sld_label = "##" .. setting
-	local dSld, sld = imgui.slider_float(sld_label, core.config[setting], low, high)
-	if dSld then core.config[setting] = sld; core.save_config() end
+    imgui.text(label .. ":")
+    imgui.same_line()
+    
+    local cursor_pos = imgui.get_cursor_pos()
+    local txtbox_w = config_helpers.re_ui.font_size * 2.5
+    local txtbox_x = config_helpers.re_ui.window_w - txtbox_w + 23
+    imgui.set_cursor_pos(Vector2f.new(txtbox_x, cursor_pos.y))
+    imgui.push_item_width(txtbox_w)
+    local txt_label = string.format(" (%.1f to %.1f)", low, high)
+    local current_value = core.get_nested(core.config, setting)
+    local dTxt, txt_string, _, _ = imgui.input_text(txt_label, tostring(current_value))
+    local txt = math.min(high, math.max(low, tonumber(txt_string) or 1))
+    if dTxt then
+        core.set_nested(core.config, setting, txt)
+        core.save_config()
+    end
+    imgui.pop_item_width()
+    
+    local sld_label = "##" .. setting
+    local dSld, sld = imgui.slider_float(sld_label, core.get_nested(core.config, setting), low, high)
+    if dSld then
+        core.set_nested(core.config, setting, sld)
+        core.save_config()
+    end
 end
 
 return config_helpers

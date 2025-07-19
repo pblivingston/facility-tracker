@@ -217,9 +217,9 @@ end
 local function moon_tracker()
 	local re_ui = config_helpers.re_ui
 	if imgui.tree_node("Moon Phase Tracker") then
-		config_helpers.main("Display Moon Phase", "draw_moon", "mo_hotkey")
+		config_helpers.main("Display Moon Phase", "moon.draw", "moon.hotkey")
 		imgui.separator()
-			imgui.begin_disabled(not core.config.draw_moon)
+			imgui.begin_disabled(not core.config.moon.draw)
 			config_helpers.alignedText("In Hub show:")
 				imgui.same_line()
 				local hub_show = {
@@ -229,17 +229,14 @@ local function moon_tracker()
 				}
 				local hub_show_size = imgui.calc_text_size("Main moon")
 				imgui.push_item_width(hub_show_size.x + re_ui.font_size * 1.08 + 10)
-				config_helpers.combo("", "ghub_moon", hub_show)
+				config_helpers.combo("", "moon.ghub_moon", hub_show)
 				imgui.pop_item_width()
 			imgui.text("")
 			local checkboxes = {
-				{ "Show Numerals",    "draw_m_num"  },
-				{ "Automatic Hiding", "auto_hide_m" }
+				{ "Show Numerals",           "moon.draw_num"  },
+				{ "Hide with Time & Season", "moon.auto_hide" }
 			}
 			config_helpers.checkboxes(checkboxes)
-				imgui.indent(re_ui.indent_w)
-				imgui.text("(Hides with Time & Season)")
-				imgui.unindent(re_ui.indent_w)
 			imgui.separator()
 			imgui.end_disabled()
 		imgui.tree_pop()
