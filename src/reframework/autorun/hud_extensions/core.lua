@@ -26,11 +26,24 @@ function core.keys_to_num(tbl)
 	return new_tbl
 end
 
+-- function core.load_data(folder)
+	-- local dir = folder and "hud_extensions\\" .. folder or "hud_extensions"
+	-- for _, path in ipairs(fs.glob(dir .. [[\\.*json]])) do
+		-- local name = path:sub(#dir + 2, -6)
+		-- core[name] = core.keys_to_num(json.load_file(path))
+	-- end
+-- end
+
 function core.load_data(folder)
 	local dir = folder and "hud_extensions\\" .. folder or "hud_extensions"
-	for _, path in ipairs(fs.glob(dir .. [[\\.*json]])) do
+	if folder then core[folder] = core[folder] or {} end
+	for _, path in ipairs(fs.glob(dir .. [[\\[^\\]+\.*json]])) do
 		local name = path:sub(#dir + 2, -6)
-		core[name] = core.keys_to_num(json.load_file(path))
+		if folder then
+			core[folder][name] = core.keys_to_num(json.load_file(path))
+		else
+			core[name] = core.keys_to_num(json.load_file(path))
+		end
 	end
 end
 
