@@ -28,10 +28,10 @@ end
 
 function core.load_data(folder)
 	local dir = folder and "hud_extensions\\" .. folder or "hud_extensions"
-	if folder then core[folder] = core[folder] or {} end
 	for _, path in ipairs(fs.glob(dir .. [[\\[^\\]+\.*json]])) do
-		local name = path:sub(#dir + 2, -6)
+		local name = path:match(".+\\(.-)%.json$")
 		if folder then
+			core[folder] = core[folder] or {}
 			core[folder][name] = core.keys_to_num(json.load_file(path))
 		else
 			core[name] = core.keys_to_num(json.load_file(path))
