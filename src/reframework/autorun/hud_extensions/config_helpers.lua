@@ -121,6 +121,10 @@ function config_helpers.combos(combos)
 	end
 end
 
+function config_helpers.all_combo()
+
+end
+
 function config_helpers.slider(label, setting, low, high)
     imgui.text(label .. ":")
     imgui.same_line()
@@ -152,6 +156,19 @@ function config_helpers.sliders(sliders)
 	for _, sld in ipairs(sliders) do
 		local label, setting, low, high = sld[1], sld[2], sld[3], sld[4]
 		config_helpers.slider(label, setting, low, high)
+	end
+end
+
+function config_helpers.toggle_button(tbl)
+	local nt = core.get_nested(core.config, tbl)
+	local mode = core.get_mode(nt)
+	local msg = mode and "Off" or "On"
+	if imgui.button("Toggle All " .. msg .. "##" .. tbl) then
+		for k, v in pairs(nt) do
+			local nk = tbl .. "." .. k
+			if type(v) == "boolean" then core.set_nested(core.config, nk, not mode) end
+		end
+		core.save_config()
 	end
 end
 
@@ -208,6 +225,9 @@ function config_helpers.hiding(label, mod_name, options)
 		if options then
 			local combo_w = config_helpers.calc_options_w(options)
 			imgui.push_item_width(combo_w + config_helpers.re_ui.font_size * 1.1 + 10)
+			
+			-- all_combo here
+			
 			config_helpers.combos(general)
 			for _, rads in ipairs(radial) do
 				local main, rado = rads[1], rads[2]
@@ -218,6 +238,8 @@ function config_helpers.hiding(label, mod_name, options)
 			end
 			imgui.pop_item_width()
 		else
+			config_helpers.toggle_button(mod_name .. ".hiding")
+			imgui.text("")
 			config_helpers.checkboxes(general)
 			for _, rads in ipairs(radial) do
 				local main, rado = rads[1], rads[2]

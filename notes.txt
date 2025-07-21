@@ -28,7 +28,7 @@ detect start menu for showing tracker
 draw			config_window
 draw_helpers	config_helpers
 		-	-	-		bridge		-	-	-
-moon_updates	voucher_updates		facility_updates	
+moon_updates	voucher_updates		facility_updates	ticker_updates	clock_updates
 									facility_helpers
 		-	-	-	main_updates	-	-	-
 		-	-	-		core		-	-	-

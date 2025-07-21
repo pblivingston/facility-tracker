@@ -20,6 +20,22 @@ function core.get_index(indexed_table, value)
 	return nil
 end
 
+function core.get_mode(tbl)
+    local counts = {}
+    for k, v in pairs(tbl) do
+        counts[v] = (counts[v] or 0) + 1
+    end
+
+    local mode, mode_count = nil, 0
+    for v, count in pairs(counts) do
+        if count > mode_count then
+            mode, mode_count = v, count
+        end
+    end
+
+    return mode
+end
+
 function core.keys_to_num(tbl)
 	local new_tbl = {}
 	for k, v in pairs(tbl) do
@@ -52,7 +68,7 @@ end
 function core.load_data(folder)
 	local dir = folder and "hud_extensions\\" .. folder or "hud_extensions"
 	if folder then core[folder] = core[folder] or {} end
-	for _, path in ipairs(fs.glob(dir .. [[\.*json]])) do
+	for _, path in ipairs(fs.glob(dir .. [[\\[^\\]+\.*json]])) do
 		local name = path:match(".+\\(.-)%.json$")
 		if folder then
 			core[folder][name] = core.keys_to_num(json.load_file(path))
