@@ -49,21 +49,6 @@ function core.set_nested(tbl, key, value)
     tbl[parts[#parts]] = value
 end
 
-local function compare_versions(a, b)
-    local a_parts = {}
-    for part in string.gmatch(a, "%d+") do table.insert(a_parts, tonumber(part)) end
-    local b_parts = {}
-    for part in string.gmatch(b, "%d+") do table.insert(b_parts, tonumber(part)) end
-
-    for i = 1, math.max(#a_parts, #b_parts) do
-        local a_num = a_parts[i] or 0
-        local b_num = b_parts[i] or 0
-        if a_num < b_num then return -1 end
-        if a_num > b_num then return 1 end
-    end
-    return 0 -- versions are equal
-end
-
 function core.load_data(folder)
 	local dir = folder and "hud_extensions\\" .. folder or "hud_extensions"
 	if folder then core[folder] = core[folder] or {} end
@@ -90,6 +75,21 @@ function core.save_config()
     end
 end
 
+local function compare_versions(a, b)
+    local a_parts = {}
+    for part in string.gmatch(a, "%d+") do table.insert(a_parts, tonumber(part)) end
+    local b_parts = {}
+    for part in string.gmatch(b, "%d+") do table.insert(b_parts, tonumber(part)) end
+
+    for i = 1, math.max(#a_parts, #b_parts) do
+        local a_num = a_parts[i] or 0
+        local b_num = b_parts[i] or 0
+        if a_num < b_num then return -1 end
+        if a_num > b_num then return 1 end
+    end
+    return 0 -- versions are equal
+end
+
 local function migrate(loaded, name)
 	local default = name and core.config[name] or core.config
 	local v, dv = loaded.version or "0.0.0", default.version or "0.0.0"
@@ -99,23 +99,23 @@ local function migrate(loaded, name)
     
 	local function process_table(tbl, pk)
 		for k, val in pairs(tbl) do
-			if k ~= "version" then goto continue end
-				local bk = pk and (pk .. "." .. k) or k
-				local ck = conv and conv[bk]
-				if type(val) == "table" then
-					process_table(val, bk)
-				elseif ck and type(ck) == "table" then
-					for _, nk in ipairs(ck) do
-						if core.get_nested(core.config, nk) then
-							core.set_nested(core.config, nk, val)
-						end
+			if k == "version" then goto continue end
+			local bk = pk and (pk .. "." .. k) or k
+			local ck = conv and conv[bk]
+			if type(val) == "table" then
+				process_table(val, bk)
+			elseif ck and type(ck) == "table" then
+				for _, nk in ipairs(ck) do
+					if core.get_nested(core.config, nk) then
+						core.set_nested(core.config, nk, val)
 					end
-				elseif core.get_nested(default, ck or bk) then
-					core.set_nested(default, ck or bk, val)
 				end
-				::continue::
+			elseif core.get_nested(default, ck or bk) then
+				core.set_nested(default, ck or bk, val)
 			end
+			::continue::
 		end
+	end
     
 	process_table(loaded)
 	default.version = dv
@@ -133,6 +133,33 @@ function core.load_config()
         end
     end
     core.save_config()
+end
+
+function core.backup_config(mod_name, ts)
+	ts = ts or os.date("%Y-%m-%d_%H-%M-%S")
+	local dir = "hud_extensions/backups/" .. ts .. "/"
+	if mod_name then
+		local backup = dir .. user_config_dir .. "/" .. mod_name .. ".json"
+		json.dump_file(backup, core.config[mod_name])
+	else
+		local backup = dir .. config_path
+		local current = {}
+		for k, v in pairs(core.config) do
+			if type(v) ~= "table" then current[k] = v end
+		end
+		json.dump_file(backup, current)
+	end
+end
+
+function core.reset_config(mod_name, ts)
+	core.backup_config(mod_name, ts)
+	local path = mod_name and "hud_extensions/config/" .. mod_name .. ".json" or "hud_extensions/config.json"
+	local default = json.load_file(path)
+	for k, v in pairs(default) do
+		local nk = mod_name and string.format("%s.%s", mod_name, k) or k
+		core.set_nested(core.config, nk, v)
+	end
+	core.save_config()
 end
 
 core.singletons = {

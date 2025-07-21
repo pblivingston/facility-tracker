@@ -1,7 +1,40 @@
 {
 	"hotkey"       : "None",
 	"draw"         : true,
-	"auto_hide"    : true,
 	"non_meridian" : false,
+	"auto_hide"    : true,
+	"pos"          : {
+		"default"      : "Bottom-Right",
+		"full"         : "Right",
+		"tent"         : "Right",
+		"map"          : "Right"
+	},
+	"hiding"       : {
+		"map"          : false,
+		"tent"         : false,
+		"temp"         : false,
+		"camp"         : false,
+		"tables"       : false,
+		"wrest"        : false,
+		"bowl"         : false,
+		"base"         : false,
+		"base_rad"     : false,
+		"life"         : false,
+		"life_rad"     : false,
+		"train"        : false,
+		"train_rad"    : false,
+		"field"        : false,
+		"field_rad"    : false,
+		"combat"       : false,
+		"combat_rad"   : false,
+		"h_combat"     : false,
+		"h_combat_rad" : false,
+		"quest"        : false,
+		"quest_rad"    : false,
+		"quest_c"      : false,
+		"quest_c_rad"  : false,
+		"quest_hc"     : false,
+		"quest_hc_rad" : false
+	},
 	"version"      : "1.0.0"
 }

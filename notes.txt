@@ -18,6 +18,10 @@ detect start menu for showing tracker
 - 'core' tables now load from data/hud_extensions
 - moved init_savedata to bridge
 - added config version detection and migration
+- migration now handles nested keys individually instead of overwriting entire tables
+- updated default config
+- reworked config window
+- added config backup and reset
 
 
 		-	-	-  facility_tracker -	-	-
@@ -47,22 +51,11 @@ tent/map scale (slider)
 corner opacities (sliders)
 
 node:facility? (takes hotkey)
-	full
-		bars?
-		timers?
-		flags?
-		old icons?
-		oversize scroll speed (slider)
-		opacity (slider)
 	mini
 		bars?
 		timers?
 		flags?
 		counts?
-		node:position [left, right]
-			default
-			tent
-			map
 		node:include [always, etc.]
 			ship
 			rations
@@ -70,21 +63,32 @@ node:facility? (takes hotkey)
 			shares
 			nest
 			pugee
+		node:position [left, right]
+			default
+			tent
+			map
+	full
+		bars?
+		timers?
+		flags?
+		old icons?
+		oversize scroll speed (slider)
+		opacity (slider)
 	hide with hud?
 	node:hiding/swapping [full, mini, hide]
 		map
 		tent
 		temp tent
 		camp gear
-		node:village
-			default
-			radial
+		tables
+		wrestling
+		bowling
 		node:base camp
 			default
 			radial
-			tables
-			arm wrestling
-			bowling
+		node:village
+			default
+			radial
 		node:training
 			default
 			radial
@@ -110,35 +114,35 @@ node:facility? (takes hotkey)
 node:ticker? (takes hotkey)
 	ship?
 	trades?
+	hide with hud?
+	speed (slider)
+	opacity (slider)
+	bottom tent/map scale (slider)
 	node:position (if not full tr) [top, bottom]
 		default
 		tent
 		map
-	speed (slider)
-	opacity (slider)
-	bottom tent/map scale (slider)
-	hide with hud?
 	node:hiding [?]
 
 node:voucher? (takes hotkey)
 	mini count?
 	dliv count?
+	hide with hud?
 	node:position
 		default [any corner]
 		full tr [left, right]
 		tent [left, right]
 		map [left, right]
-	hide with hud?
 	node:hiding/swapping [full, mini, dliv, hide]
 
 node:clock? (takes hotkey)
 	24-h?
+	hide with hud?
 	node:position
 		default [any corner]
 		full tr [left, right]
 		tent [left, right]
 		map [left, right]
-	hide with hud?
 	node:hiding [?]
 
 node:moon? (takes hotkey)

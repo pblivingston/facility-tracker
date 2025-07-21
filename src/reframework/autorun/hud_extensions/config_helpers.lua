@@ -2,6 +2,15 @@ local core = require("hud_extensions/core")
 
 local config_helpers = { re_ui = {} }
 
+config_helpers.caps = { "Top", "Bottom" }
+config_helpers.sides = { "Left", "Right" }
+config_helpers.corners = {
+	"Top-Left",
+	"Top-Right",
+	"Bottom-Left",
+	"Bottom-Right"
+}
+
 local hotkeys = {
 	["facility"] = { message = core.config.facility.hotkey or "None", listening = false },
 	["ticker"] = { message = core.config.ticker.hotkey or "None", listening = false },
@@ -36,6 +45,16 @@ function config_helpers.hotkey_toggle()
 	end
 end
 
+function config_helpers.calc_options_w(options)
+    local widths = {}
+    for i, option in ipairs(options) do
+        local size = imgui.calc_text_size(option)
+        widths[i] = size.x
+    end
+    if #widths == 0 then return 0 end
+    return math.max(table.unpack(widths))
+end
+
 function config_helpers.alignedText(text)
 	local cursor_pos = imgui.get_cursor_pos()
 	local new_x = cursor_pos.x - 3.001
@@ -43,6 +62,13 @@ function config_helpers.alignedText(text)
 	imgui.push_item_width(0.001)
 	imgui.input_text(text, nil)
 	imgui.pop_item_width()
+end
+
+function config_helpers.alignNext(label)
+	imgui.unindent(10)
+	config_helpers.alignedText("##align_" .. label)
+	imgui.indent(10)
+	imgui.same_line()
 end
 
 function config_helpers.checkbox(label, setting)
@@ -95,24 +121,6 @@ function config_helpers.combos(combos)
 	end
 end
 
-function config_helpers.main(label, setting, hotkey)
-	config_helpers.checkbox(label, setting)
-	imgui.same_line()
-	
-	local cursor_pos = imgui.get_cursor_pos()
-	local text_size = imgui.calc_text_size("Hotkey")
-	local button_w = text_size.x + 7
-	local button_x = config_helpers.re_ui.window_w - button_w + 23
-	imgui.set_cursor_pos(Vector2f.new(button_x, cursor_pos.y))
-	if imgui.button("Hotkey##" .. hotkey, Vector2f.new(button_w, config_helpers.re_ui.button_h)) then
-		hotkeys[hotkey].listening = true
-		hotkeys[hotkey].message = "press a key..."
-	end
-	if hotkeys[hotkey].listening then config_helpers.get_new_hotkey(hotkey) end
-	imgui.same_line()
-	imgui.text(hotkeys[hotkey].message)
-end
-
 function config_helpers.slider(label, setting, low, high)
     imgui.text(label .. ":")
     imgui.same_line()
@@ -138,6 +146,89 @@ function config_helpers.slider(label, setting, low, high)
         core.set_nested(core.config, setting, sld)
         core.save_config()
     end
+end
+
+function config_helpers.sliders(sliders)
+	for _, sld in ipairs(sliders) do
+		local label, setting, low, high = sld[1], sld[2], sld[3], sld[4]
+		config_helpers.slider(label, setting, low, high)
+	end
+end
+
+function config_helpers.main(label, setting, hotkey)
+	config_helpers.checkbox(label, setting)
+	imgui.same_line()
+	
+	local cursor_pos = imgui.get_cursor_pos()
+	local text_size = imgui.calc_text_size("Hotkey")
+	local button_w = text_size.x + 7
+	local button_x = config_helpers.re_ui.window_w - button_w + 23
+	imgui.set_cursor_pos(Vector2f.new(button_x, cursor_pos.y))
+	if imgui.button("Hotkey##" .. hotkey, Vector2f.new(button_w, config_helpers.re_ui.button_h)) then
+		hotkeys[hotkey].listening = true
+		hotkeys[hotkey].message = "press a key..."
+	end
+	if hotkeys[hotkey].listening then config_helpers.get_new_hotkey(hotkey) end
+	imgui.same_line()
+	imgui.text(hotkeys[hotkey].message)
+end
+
+function config_helpers.hiding(label, mod_name, options)
+	config_helpers.alignNext("hide_" .. mod_name)
+	if imgui.tree_node(label .. "##" .. mod_name) then
+		local general = {
+			{ "On the Map",           mod_name .. ".hiding.map",    options },
+			{ "In a Tent",            mod_name .. ".hiding.tent",   options },
+			{ "In a Makeshift Tent",  mod_name .. ".hiding.temp",   options },
+			{ "At Camp Gear",         mod_name .. ".hiding.camp",   options },
+			{ "At Hub Tables",        mod_name .. ".hiding.tables", options },
+			{ "While Arm Wrestling",  mod_name .. ".hiding.wrest",  options },
+			{ "While Barrel Bowling", mod_name .. ".hiding.bowl",   options },
+		}
+		local radial = {
+			{ { "In a Base Camp (Includes the Grand Hub)", mod_name .. ".hiding.base",     options },
+				{ "With the Radial Menu",                  mod_name .. ".hiding.base_rad", options } },
+			{ { "In a Village",           mod_name .. ".hiding.life",          options },
+				{ "With the Radial Menu", mod_name .. ".hiding.life_rad",      options } },
+			{ { "In the Training Area",   mod_name .. ".hiding.train",         options },
+				{ "With the Radial Menu", mod_name .. ".hiding.train_rad",     options } },
+			{ { "While Exploring",        mod_name .. ".hiding.field",         options },
+				{ "With the Radial Menu", mod_name .. ".hiding.field_rad",     options } },
+			{ { "In Combat",              mod_name .. ".hiding.combat",        options },
+				{ "With the Radial Menu", mod_name .. ".hiding.combat_rad",    options } },
+			{ { "While the Monster is Searching (Post-Combat)", mod_name .. ".hiding.h_combat",     options },
+				{ "With the Radial Menu",                       mod_name .. ".hiding.h_combat_rad", options } },
+			{ { "On a Quest",             mod_name .. ".hiding.quest",         options },
+				{ "With the Radial Menu", mod_name .. ".hiding.quest_rad",     options } },
+			{ { "In Combat on a Quest",   mod_name .. ".hiding.q_combat",      options },
+				{ "With the Radial Menu", mod_name .. ".hiding.q_combat_rad",  options } },
+			{ { "Post-Combat on a Quest", mod_name .. ".hiding.qh_combat",     options },
+				{ "With the Radial Menu", mod_name .. ".hiding.qh_combat_rad", options } }
+		}
+		if options then
+			local combo_w = config_helpers.calc_options_w(options)
+			imgui.push_item_width(combo_w + config_helpers.re_ui.font_size * 1.1 + 10)
+			config_helpers.combos(general)
+			for _, rads in ipairs(radial) do
+				local main, rado = rads[1], rads[2]
+				config_helpers.combo(main[1], main[2], main[3])
+					imgui.indent(config_helpers.re_ui.indent_w)
+					config_helpers.combo(rado[1], rado[2], rado[3])
+					imgui.unindent(config_helpers.re_ui.indent_w)
+			end
+			imgui.pop_item_width()
+		else
+			config_helpers.checkboxes(general)
+			for _, rads in ipairs(radial) do
+				local main, rado = rads[1], rads[2]
+				config_helpers.checkbox(main[1], main[2])
+					imgui.indent(config_helpers.re_ui.indent_w)
+					config_helpers.checkbox(rado[1], rado[2])
+					imgui.unindent(config_helpers.re_ui.indent_w)
+			end
+		end
+		imgui.tree_pop()
+	end
 end
 
 return config_helpers

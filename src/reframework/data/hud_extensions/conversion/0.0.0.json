@@ -33,8 +33,8 @@
 	"draw_m_num"     : [ "moon.num" ],
 	"ghub_moon"      : [ "moon.ghub" ],
 	"auto_hide_m"    : [ "moon.auto_hide" ],
-	"tr_user_scale"  : "bottom_scale",
-	"ti_user_scale"  : "top_scale",
+	"tr_user_scale"  : [ "bottom_scale", "tm_scale" ],
+	"ti_user_scale"  : [ "top_scale", "ticker.tm_scale" ],
 	"vo_opacity"     : "tl_opacity",
 	"ck_opacity"     : "tr_opacity"
 }

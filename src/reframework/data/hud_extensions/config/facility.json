@@ -12,15 +12,47 @@
 	"mini"      : {
 		"bars"      : true,
 		"timers"    : false,
-		"flags"     : true,
 		"counts"    : true,
+		"flags"     : true,
 		"ship"      : "Always",
 		"ration"    : "Always",
 		"retrieval" : "Always",
 		"shares"    : "Always",
 		"nest"      : "Always",
-		"pugee"     : "Always"
+		"pugee"     : "Always",
+		"pos"       : {
+			"default"  : "Left",
+			"tent"     : "Right",
+			"map"      : "Right"
+		}
 	},
 	"auto_hide" : true,
+	"hiding"    : {
+		"map"          : "Full Tracker",
+		"tent"         : "Full Tracker",
+		"temp"         : "Full Tracker",
+		"camp"         : "Full Tracker",
+		"tables"       : "Full Tracker",
+		"wrest"        : "Mini Tracker",
+		"bowl"         : "Mini Tracker",
+		"base"         : "Mini Tracker",
+		"base_rad"     : "Full Tracker",
+		"life"         : "Mini Tracker",
+		"life_rad"     : "Full Tracker",
+		"train"        : "Mini Tracker",
+		"train_rad"    : "Full Tracker",
+		"field"        : "Mini Tracker",
+		"field_rad"    : "Full Tracker",
+		"combat"       : "Mini Tracker",
+		"combat_rad"   : "Mini Tracker",
+		"h_combat"     : "Mini Tracker",
+		"h_combat_rad" : "Mini Tracker",
+		"quest"        : "Hide",
+		"quest_rad"    : "Mini Tracker",
+		"quest_c"      : "Hide",
+		"quest_c_rad"  : "Hide",
+		"quest_hc"     : "Hide",
+		"quest_hc_rad" : "Hide"
+	},
 	"version"   : "1.0.0"
 }
