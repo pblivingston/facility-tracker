@@ -6,7 +6,6 @@ local bridge = {}
 function bridge.init_savedata()
 	voucher_updates.get_vouchers()
 	voucher_updates.get_login_bonus()
-	-- voucher_updates.get_login_days()
 	
 	facility_updates.get_ration_state()
 	facility_updates.get_ship_state()
