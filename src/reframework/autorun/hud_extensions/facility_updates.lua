@@ -47,7 +47,7 @@ function facility_updates.get_shares_state()
 end
 
 function facility_updates.get_nest_state()
-	local rallus = facility_manager:get_field("<Rallus>k__BackingField")
+	local rallus = facility_manager and facility_manager:get_field("<Rallus>k__BackingField")
 	if not rallus then return end
 	
 	core.savedata.Nest.count = rallus:get_field("_SupplyNum")
