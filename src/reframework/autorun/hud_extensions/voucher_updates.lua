@@ -14,7 +14,7 @@ function voucher_updates.get_vouchers()
 end
 
 function voucher_updates.get_login_bonus()
-	local delivery = network_manager:get_field("_DeliveryService")
+	local delivery = network_manager and network_manager:get_field("_DeliveryService")
 	if not delivery then return end
 	core.savedata.vouchers.ready = delivery:call("isNeedPickupLoginBonus")
 	core.savedata.vouchers.days = delivery:call("getElapsedDays")
