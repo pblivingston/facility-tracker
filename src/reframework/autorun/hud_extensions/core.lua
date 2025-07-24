@@ -192,6 +192,7 @@ core.singletons = {
 
 function core.get_savedata()
 	local savedata_manager = core.singletons.savedata_manager
+	if not savedata_manager then return end
 	local savedata_idx = savedata_manager:get_field("CurrentUserDataIndex")
 	return savedata_manager:get_field("_UserSaveData"):get_field("_Data"):get_element(savedata_idx)
 end
